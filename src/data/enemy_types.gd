@@ -30,6 +30,8 @@ const TYPES := {
 		"hp": 1.0, "score": 0, "radius": 0.9, "invulnerable": true, "hidden": true},
 	"decoy": {"name": "Clone", "shape": "Clone", "desc": "", "color": Color(1.0, 0.35, 0.25),
 		"hp": 2.0, "score": 150, "radius": 1.2, "hidden": true},
+	"drifter": {"name": "Nave perdida", "shape": "Nave", "desc": "Inofensiva e foge quando atingida. Vale muitos pontos e solta power-up.",
+		"color": Color(1.0, 0.78, 0.25), "hp": 8.0, "score": 3000, "radius": 1.4, "bonus": true},
 	"tank": {"name": "Couraçado", "shape": "Icosaedro", "desc": "Blindado, tiro em leque. Sempre solta upgrade.",
 		"color": Color(1.0, 0.82, 0.2), "hp": 28.0, "score": 1500, "radius": 1.8},
 	"barrier": {"name": "Muralha", "shape": "Barreira", "desc": "INDESTRUTÍVEL. Passe pela abertura.",

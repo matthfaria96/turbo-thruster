@@ -86,6 +86,15 @@ macOS e Linux**.
   (Aquecimento, Engrenando, Intenso, Brutal e Impossível, depois de 6 min),
   mini-chefe a cada 90 s, placar dos 5 melhores com iniciais estilo fliperama.
   Pela pausa dá para encerrar a partida contando os pontos.
+- **Painel lateral e marcadores**: à esquerda, *PODERES* mostra a bomba (quantas
+  e a tecla), o tiro carregado e o tempo dos power-ups ativos; *NA ÁREA* lista o
+  que vem pela frente com ícone, nome, distância e o que fazer (ATIRE, DESVIE,
+  PEGUE ou BÔNUS), com "NOVO!" na primeira aparição. Na tela, colchetes
+  vermelhos marcam inimigos, losangos amarelos marcam obstáculos e cada
+  power-up tem ícone e nome.
+- **Naves perdidas**: cargueiros dourados e inofensivos vagam pelo túnel a cada
+  20 s mais ou menos. Fogem quando atingidos e valem muitos pontos, geoms e um
+  power-up.
 - **HUD de cockpit** (números em display de 7 segmentos e textos em fonte de
   terminal; mapa da rota vertical na borda direita): eliminações, pontos e multiplicador, distância percorrida
   e cronômetro, ato atual com barra de progresso, velocímetro com o anel do

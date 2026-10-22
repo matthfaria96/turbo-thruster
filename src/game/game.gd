@@ -53,6 +53,7 @@ var director: ActDirector
 var post: PostFx
 var _warp: GPUParticles3D
 var hitstop_t := 0.0
+var _drifter_cd := 14.0
 var combat: Combat
 var powerups: PowerUps
 var run_end: RunEnd
@@ -161,7 +162,9 @@ func _build_world() -> void:
 func _spawn_gallery() -> void:
 	_plan.clear()
 	player.frozen = true
-	var kinds := ["gunner", "tank", "seeker", "phantom", "splitter", "warden", "laser", "serpent", "drone", "swarm"]
+	var kinds := ["gunner", "drifter", "seeker", "phantom", "splitter", "warden", "laser", "serpent", "drone", "swarm"]
+	for i in 3:
+		powerups.spawn_pickup(["shield", "bomb", "missile"][i], _start_s + 20.0 + i * 9.0, 1.2 + i * 0.4)
 	for i in kinds.size():
 		spawn_enemy(kinds[i], _start_s + 14.0 + i * 6.0, -1.3 + i * 0.3, 0.0)
 	spawn_enemy("rotor", _start_s + 80.0, 0.0, 1.0)
@@ -169,7 +172,8 @@ func _spawn_gallery() -> void:
 	spawn_enemy("barrier", _start_s + 110.0, PI * 0.6, 1.4)
 	for e in enemies:
 		e.age = 5.0
-		e.damage(e.max_hp * 0.6)
+		if e.kind != "drifter":
+			e.damage(e.max_hp * 0.6)
 
 
 func _notification(what: int) -> void:
@@ -204,6 +208,7 @@ func _process(delta: float) -> void:
 			projectiles.add_shot(shot)
 	if state in ACTIVE_STATES and not _gallery:
 		_spawn_next()
+		_spawn_drifters(dt)
 	_step_entities(world_dt)
 	powerups.update(dt)
 	projectiles.update(dt, time_scale, player.s, player.speed)
@@ -225,7 +230,8 @@ func _process(delta: float) -> void:
 
 
 func _hud_state() -> Dictionary:
-	return {"score": score, "multiplier": multiplier, "weapon": player.weapon,
+	var feed := HudFeed.scan(self)
+	return {"powers": HudFeed.powers(self), "area": feed.area, "markers": feed.markers,"score": score, "multiplier": multiplier, "weapon": player.weapon,
 		"hull": maxi(player.hull, 0), "speed": player.speed, "shield": player.shield_t,
 		"rapid": player.rapid_t, "distance": player.s, "charge": player.charge,
 		"kills": plan_kills if not is_arcade() else kills, "total": plan_total, "length": level.length,
@@ -355,6 +361,18 @@ func _spawn_spec(spec: Dictionary, at: float) -> void:
 			var body := spawn_enemy("serpent_body", at + (k + 1) * 2.0, spec.th, 0.0)
 			body.leader = e
 			body.slot = k + 1
+
+
+## Lost ships wander the tunnel now and then: harmless, worth big points.
+func _spawn_drifters(dt: float) -> void:
+	if state != State.PLAY:
+		return
+	_drifter_cd -= dt
+	if _drifter_cd > 0.0:
+		return
+	_drifter_cd = randf_range(18.0, 28.0)
+	spawn_enemy("drifter", player.s + 140.0, randf_range(-PI, PI), randf() * TAU)
+	hud.announce("", "NAVE PERDIDA À VISTA!", 1.2, EnemyTypes.get_type("drifter").color)
 
 
 func spawn_enemy(kind: String, s: float, th: float, phase: float, from_plan := false) -> Enemy:

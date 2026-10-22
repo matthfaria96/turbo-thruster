@@ -117,6 +117,15 @@ static func enemy(kind: String) -> Node3D:
 			root.add_child(spin)
 		"rotor":
 			return rotor()
+		"drifter":
+			var hull := PackedVector2Array([Vector2(0, 1.4), Vector2(0.45, 0.2), Vector2(1.4, -0.6),
+				Vector2(0.5, -0.35), Vector2(0, -0.85), Vector2(-0.5, -0.35), Vector2(-1.4, -0.6), Vector2(-0.45, 0.2)])
+			var body := NeonGeo.build("drifter", NeonGeo.extrude(hull, 0.35), color, 1.9, 0.2, 0.07)
+			body.rotation = Vector3(-PI / 2, 0, 0)
+			root.add_child(body)
+			var cargo := _named("Spin", NeonGeo.build("drifter_cargo", NeonGeo.cube(0.55), Color(1, 1, 1), 2.0, 0.3, 0.05))
+			cargo.position = Vector3(0, 0.4, 0.2)
+			root.add_child(cargo)
 		"pulse_ring":
 			return pulse_ring()
 		"decoy":

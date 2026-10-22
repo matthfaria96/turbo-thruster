@@ -43,10 +43,8 @@ func _draw() -> void:
 		float(state.shield) / 10.0, Color(0.4, 0.8, 1.0))
 	_draw_ring_gauge(Vector2(size.x / _k - 150, size.y / _k - 92), "ARMA", int(state.weapon),
 		Player.MAX_WEAPON, GREEN, float(state.rapid) / 9.0, Color(1.0, 0.6, 0.15))
-	_draw_specials()
 	_draw_reticle()
 	_draw_hazard()
-	_draw_power()
 
 
 # ------------------------------------------------------------------ helpers

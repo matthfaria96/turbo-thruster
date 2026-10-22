@@ -252,7 +252,7 @@ func on_enemy_killed(e: Enemy) -> void:
 		g.plan_kills += 1
 	var points := int(e.spec.score * g.multiplier * _speed_mult())
 	g.score += points
-	var big := e.kind in ["tank", "serpent", "warden"]
+	var big := e.kind in ["tank", "serpent", "warden", "drifter"]
 	g.fx.explosion(e.global_position, e.spec.color, 1.8 if big else 1.0)
 	g.post.pulse(e.spec.color, 0.45 if big else 0.18)
 	if big:
@@ -262,7 +262,9 @@ func on_enemy_killed(e: Enemy) -> void:
 		g.fx.popup(e.global_position + Vector3.UP * 0.5, "+%d" % points, e.spec.color)
 	Sfx.play("middle" if big else "small", -3.0, randf_range(0.9, 1.1))
 	_maybe_drop(e)
-	g.geoms.drop(e.s, e.th, e.h, 2 + int(e.spec.hp / 3.0))
+	g.geoms.drop(e.s, e.th, e.h, 18 if e.kind == "drifter" else 2 + int(e.spec.hp / 3.0))
+	if e.kind == "drifter":
+		g.hud.announce("", "NAVE PERDIDA DESTRUÍDA  +%d" % points, 1.2, e.spec.color)
 	_split(e)
 	_count_group_kill(e)
 	e.queue_free()
@@ -280,7 +282,7 @@ func _split(e: Enemy) -> void:
 func _maybe_drop(e: Enemy) -> void:
 	_kills_since_drop += 1
 	var kind := ""
-	if e.kind in ["tank", "serpent", "warden"]:
+	if e.kind in ["tank", "serpent", "warden", "drifter"]:
 		kind = "weapon" if g.player.weapon < Player.MAX_WEAPON else g.powerups.random_kind()
 	elif _kills_since_drop >= 9 or randf() < 0.03:
 		kind = g.powerups.random_kind()

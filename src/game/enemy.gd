@@ -45,6 +45,8 @@ var hidden := false
 var beam_state := 0
 var _cycle := 0.0
 var _fade_written := 1.0
+var _flee_t := 0.0
+var _flee_dir := 1.0
 var _model: Node3D
 var _spin: Node3D
 var _orbit: Node3D
@@ -77,7 +79,7 @@ func setup(p_kind: String, p_s: float, p_th: float, phase: float, difficulty: fl
 	for g in _geometry:
 		g.set_instance_shader_parameter("phase", _phase * 3.0)
 	_model.scale = Vector3.ONE * 0.01
-	if kind in ["drone", "weaver", "tank", "seeker", "swarm"]:
+	if kind in ["drone", "weaver", "tank", "seeker", "swarm", "drifter"]:
 		var trail := Fx.make_trail(spec.color, 18, 0.25, 0.5 if kind == "tank" else 0.3)
 		trail.position = Vector3(0, 0, -0.6)
 		add_child(trail)
@@ -186,6 +188,17 @@ func _step_special(dt: float, game: Game) -> void:
 				th = leader.trail[idx].y
 			else:
 				s = leader.s + slot * 2.0
+		"drifter":
+			# Cruises slower than the ship; when hit it bolts sideways and away.
+			var flee := _punch > 0.0 or _flee_t > 0.0
+			if _punch > 0.5:
+				_flee_t = 1.2
+				_flee_dir = 1.0 if randf() < 0.5 else -1.0
+			_flee_t = maxf(0.0, _flee_t - dt)
+			s += (30.0 if flee else 16.0) * dt
+			_base_th = wrapf(_base_th + (_flee_dir * 2.2 if flee else 0.0) * dt, -PI, PI)
+			th = _base_th + sin(age * 0.8 + _phase) * 0.5
+			h = 1.3 + sin(age * 2.0) * 0.25
 		"decoy":
 			s += 3.0 * dt
 			th = _base_th + sin(age * 2.2 + _phase) * 0.7
@@ -305,6 +318,8 @@ func _animate(dt: float, game: Game) -> void:
 				_spin.rotation += Vector3(2.0, 1.4, 0.8) * dt
 			"swarm":
 				_spin.rotation.z += dt * 9.0
+			"drifter":
+				_spin.rotation.y += dt * 2.0
 			"phantom", "decoy":
 				_spin.rotation.y += dt * 2.5
 			"splitter", "serpent_body":

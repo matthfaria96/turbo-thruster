@@ -10,6 +10,8 @@ const SWAY_PX := 16.0
 
 var root: Control
 var _gauges: CockpitGauges
+var _panel: SidePanel
+var _markers: TargetMarkers
 var _route: RouteMap
 var _route_holder: Control
 var _announce: Label
@@ -32,6 +34,12 @@ func build(_index: int, level: Dictionary, arcade := false) -> void:
 	var vignette := _canvas_rect(VIGNETTE, {})
 	_vignette_mat = vignette.material
 	root.add_child(vignette)
+	_markers = TargetMarkers.new()
+	UiStyle.full_rect(_markers)
+	root.add_child(_markers)
+	_panel = SidePanel.new()
+	UiStyle.full_rect(_panel)
+	root.add_child(_panel)
 	_gauges = CockpitGauges.new()
 	UiStyle.full_rect(_gauges)
 	root.add_child(_gauges)
@@ -102,6 +110,8 @@ func refresh(state: Dictionary, dt: float) -> void:
 	if _boss_visible and float(state.boss_ratio) >= 0.0:
 		_gauges.boss_ratio = float(state.boss_ratio)
 	_gauges.push(state, dt)
+	_panel.push(state, dt)
+	_markers.push(state.get("markers", []), dt)
 	if _route:
 		_route_holder.position = Vector2(view.x - _route_holder.size.x - 18.0, view.y * 0.5 - _route_holder.size.y * 0.5 - 10.0)
 		_route.update_state(float(state.distance), _boss_visible, dt)
