@@ -35,15 +35,21 @@ macOS e Linux**.
 - **Inimigos fáceis de reconhecer.** Cada tipo tem forma e cor próprias, e a
   tela de seleção de setor mostra quais aparecem em cada um:
 
-  | Inimigo | Forma | Cor | Comportamento |
-  | --- | --- | --- | --- |
-  | Dardo | tetraedro | rosa | voa em grupo, morre com um tiro |
-  | Cata-vento | hélice | roxo | rápido, ziguezagueia |
-  | Cubo | cubo | laranja | para à sua frente e atira em você |
-  | Mina | estrela | magenta | parada no túnel, explode ao contato |
-  | Esfera | orbe de energia com espinhos | azul | mergulha direto em você |
-  | Enxame | estrelinhas | vermelho | chegam em espiral na sua direção |
-  | Couraçado | icosaedro | dourado | blindado, tiro em leque, sempre solta upgrade |
+  | Inimigo | Forma | Cor | Tiros para destruir | Comportamento |
+  | --- | --- | --- | --- | --- |
+  | Dardo | tetraedro | rosa | 1 | voa em grupo |
+  | Enxame | estrelinhas | vermelho | 1 | chegam em espiral na sua direção |
+  | Cata-vento | hélice | roxo | 3 | rápido, ziguezagueia |
+  | Esfera | orbe de energia com espinhos | azul | 4 | mergulha direto em você |
+  | Mina | estrela | magenta | 6 | parada no túnel, explode ao contato |
+  | Cubo | cubo | laranja | 10 | para à sua frente e atira em você |
+  | Couraçado | icosaedro | dourado | 28 | blindado, tiro em leque, sempre solta upgrade |
+  | **Muralha** | arco listrado | amarelo | indestrutível | fecha parte do túnel: passe pela abertura |
+  | **Varredor** | lâminas | vermelho-claro | indestrutível | gira pelo túnel: passe entre as lâminas |
+
+  Inimigos resistentes mostram que estão tomando dano: dão um tranco, tremem,
+  soltam faíscas e ganham uma barra de vida. Quando estão quase mortos, piscam
+  e soltam fumaça de faíscas. A Muralha também bloqueia os seus tiros.
 
   A sua nave é **ciano** e atira rastros **amarelos**. As balas inimigas são
   estrelas de energia **laranja-avermelhadas**. A grade do túnel fica mais apagada de

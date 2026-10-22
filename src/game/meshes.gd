@@ -90,6 +90,8 @@ static func enemy(kind: String) -> Node3D:
 		"swarm":
 			var spin := _named("Spin", NeonGeo.build("swarm_star", NeonGeo.star(4, 0.9, 0.22, 0.15), color, 2.2, 0.3, 0.05))
 			root.add_child(spin)
+		"rotor":
+			return rotor()
 		"tank":
 			var spin := _named("Spin", NeonGeo.build("icosa", NeonGeo.icosa(1.5), color, 1.7, 0.12))
 			root.add_child(spin)
@@ -167,6 +169,45 @@ static func portal() -> Node3D:
 	disc_node.material_override = disc_mat
 	disc_node.name = "Disc"
 	root.add_child(disc_node)
+	return root
+
+
+static func _radial(a: float, r: float) -> Vector3:
+	return Vector3(sin(a), -cos(a), 0.0) * r
+
+
+## Energy gate spanning an arc of the tunnel cross-section (centre angle 0).
+static func barrier(half_width: float) -> Node3D:
+	var segments := 12
+	var v := PackedVector3Array()
+	for i in segments + 1:
+		var a := -half_width + 2.0 * half_width * i / segments
+		v.append(_radial(a, Track.RADIUS - 0.15))
+		v.append(_radial(a, Track.RADIUS - 3.6))
+	var faces: Array = []
+	for i in segments:
+		var o := i * 2
+		faces.append(PackedInt32Array([o, o + 2, o + 3, o + 1]))
+	var color: Color = EnemyTypes.get_type("barrier").color
+	var root := Node3D.new()
+	root.add_child(NeonGeo.build("barrier%.2f" % half_width, {"v": v, "f": faces}, color, 2.2, 0.16, 0.09))
+	return root
+
+
+## Two laser blades sweeping the whole cross-section around the axis.
+static func rotor() -> Node3D:
+	var color: Color = EnemyTypes.get_type("rotor").color
+	var spin := Node3D.new()
+	spin.name = "Spin"
+	var outer := Track.RADIUS - 0.1
+	for k in 2:
+		var blade := PackedVector2Array([Vector2(-0.22, -0.7), Vector2(0.22, -0.7), Vector2(0.32, -outer), Vector2(-0.32, -outer)])
+		var node := NeonGeo.build("rotor_blade", NeonGeo.extrude(blade, 0.3), color, 2.6, 0.3, 0.08)
+		node.rotation.z = k * PI
+		spin.add_child(node)
+	spin.add_child(NeonGeo.build("rotor_hub", NeonGeo.octa(0.8), Color(1, 1, 1), 2.2, 0.2, 0.06))
+	var root := Node3D.new()
+	root.add_child(spin)
 	return root
 
 

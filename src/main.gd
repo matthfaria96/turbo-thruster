@@ -1,7 +1,7 @@
 extends Node
 ## Scene router: menus (over an animated tunnel) and game sessions.
 ## Command-line (after "--"): --shot=PATH --screen=menu|levels|settings|controls|game
-##   --level=N --delay=SECONDS --autoplay --skip=DISTANCE --size=WxH  → saves a screenshot and quits (tests).
+##   --level=N --delay=SECONDS --autoplay --skip=DISTANCE --size=WxH --gallery  → saves a screenshot and quits (tests).
 
 var _ui: CanvasLayer
 var _backdrop: MenuBackdrop
@@ -53,6 +53,8 @@ func start_level(index: int) -> void:
 		_backdrop = null
 	_game = Game.new()
 	_game.setup(index, _args.has("autoplay"), float(_args.get("skip", "0")))
+	if _args.has("gallery"):
+		_game.enable_gallery()
 	_game.request_menu.connect(show_main_menu)
 	_game.request_level.connect(start_level)
 	add_child(_game)
@@ -94,8 +96,23 @@ func _parse_args() -> Dictionary:
 	return out
 
 
+var _bench_ms: Array[float] = []
+
+
+func _process(_delta: float) -> void:
+	if _args.has("shot"):
+		_bench_ms.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+
+
 func _capture_later(path: String, delay: float) -> void:
 	await get_tree().create_timer(delay, true, false, true).timeout
+	if not _bench_ms.is_empty():
+		var sorted := _bench_ms.duplicate()
+		sorted.sort()
+		var avg := 0.0
+		for v in _bench_ms:
+			avg += v
+		print("cpu_ms avg=%.2f p95=%.2f frames=%d" % [avg / _bench_ms.size(), sorted[int(sorted.size() * 0.95)], _bench_ms.size()])
 	await RenderingServer.frame_post_draw
 	print("fps=", Engine.get_frames_per_second())
 	var image := get_viewport().get_texture().get_image()

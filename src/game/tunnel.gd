@@ -2,7 +2,8 @@ class_name Tunnel
 extends Node3D
 ## Streams tunnel mesh chunks around the player so the level can be any length.
 
-const CHUNK := 120.0
+const CHUNK := 45.0
+const PREFETCH := 120.0
 const STEP := 1.5
 const SEGMENTS := 36
 const AHEAD := 320.0
@@ -51,12 +52,21 @@ func _push_ripples() -> void:
 	material.set_shader_parameter("ripple_strength", _ripple_strength)
 
 
+## Keeps chunks around `s`. Chunks needed right now are built immediately;
+## chunks further ahead (PREFETCH) are built at most one per frame so the
+## game never hitches on tunnel generation.
 func update_view(s: float) -> void:
 	var first := int(floor(maxf(0.0, s - BEHIND) / CHUNK))
 	var last := int(floor((s + AHEAD) / CHUNK))
 	for ci in range(first, last + 1):
 		if not _chunks.has(ci):
 			_chunks[ci] = _build_chunk(ci)
+	var prefetch := int(floor((s + AHEAD + PREFETCH) / CHUNK))
+	for ci in range(last + 1, prefetch + 1):
+		if not _chunks.has(ci):
+			_chunks[ci] = _build_chunk(ci)
+			break
+	last = prefetch
 	for ci: int in _chunks.keys():
 		if ci < first or ci > last:
 			(_chunks[ci] as Node).queue_free()

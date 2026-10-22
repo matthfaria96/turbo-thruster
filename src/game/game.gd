@@ -51,6 +51,14 @@ var _leaving := false
 var _start_s := 0.0
 
 
+var _gallery := false
+
+
+## Debug: freezes the ship and lines up every enemy type ahead of it.
+func enable_gallery() -> void:
+	_gallery = true
+
+
 func setup(index: int, autoplay := false, start_s := 0.0) -> void:
 	level_index = index
 	level = Levels.get_level(index)
@@ -94,8 +102,20 @@ func _ready() -> void:
 	_plan = WavePlan.build(level, level_index)
 	player.s = _start_s
 	_plan = _plan.filter(func(p: Dictionary) -> bool: return p.s > _start_s)
-	_plan_total = _plan.size()
+	_plan_total = _plan.filter(func(p: Dictionary) -> bool:
+		return not EnemyTypes.get_type(p.kind).get("invulnerable", false)).size()
 	hud.setup_route(track, level.length, _plan)
+	if _gallery:
+		_plan.clear()
+		player.frozen = true
+		var kinds := ["gunner", "tank", "seeker", "mine", "weaver", "drone", "swarm"]
+		for i in kinds.size():
+			spawn_enemy(kinds[i], _start_s + 14.0 + i * 7.0, -1.1 + i * 0.37, 0.0)
+		spawn_enemy("rotor", _start_s + 70.0, 0.0, 1.0)
+		spawn_enemy("barrier", _start_s + 95.0, PI * 0.6, 1.4)
+		for e in enemies:
+			e.age = 5.0
+			e.damage(e.max_hp * 0.7)
 	Sfx.play_music(level.music)
 	hud.announce("SETOR %d" % (level_index + 1), String(level.name).to_upper(), INTRO_TIME - 0.4)
 	_sync_transforms(0.0)
@@ -122,12 +142,12 @@ func _process(delta: float) -> void:
 	var shots := player.step(dt, _read_input())
 	for shot in shots:
 		projectiles.add_shot(shot)
-	if state in ACTIVE_STATES:
+	if state in ACTIVE_STATES and not _gallery:
 		_spawn_from_plan()
 	_step_entities(dt)
 	projectiles.update(dt, player.s)
 	geoms.update(dt, player)
-	if state in [State.PLAY, State.BOSS, State.PORTAL]:
+	if state in [State.PLAY, State.BOSS, State.PORTAL] and not _gallery:
 		_resolve_hits()
 	_sync_transforms(dt)
 	projectiles.render()
@@ -238,7 +258,11 @@ func _step_entities(dt: float) -> void:
 func _sync_transforms(dt: float) -> void:
 	player.global_transform = track.pose(player.s, player.th, Player.H)
 	for e in enemies:
-		e.global_transform = track.pose(e.s, e.th, e.h)
+		if e.uses_frame():
+			var fr := track.frame(e.s)
+			e.global_transform = Transform3D(fr.basis * Basis(Vector3.BACK, e.frame_angle()), fr.origin)
+		else:
+			e.global_transform = track.pose(e.s, e.th, e.h)
 	for p in pickups:
 		p.global_transform = track.pose(p.s, p.th, p.h)
 	if boss:
@@ -312,6 +336,11 @@ func _shot_vs_targets(shot: Dictionary) -> void:
 	for e in enemies:
 		if not e.alive or shot.get("dead", false):
 			continue
+		if e.uses_frame():
+			if e.blocks_shot(shot.th) and e.s >= shot.ps - 0.5 and e.s <= shot.s + 0.5:
+				fx.sparks(track.point(e.s, shot.th, shot.h), e.spec.color, 4, 10.0, 0.6, 0.2)
+				shot.dead = true
+			continue
 		if _swept_hit(shot, e.s, e.th, e.h, e.spec.radius):
 			if e.damage(shot.dmg):
 				_on_enemy_killed(e)
@@ -360,14 +389,16 @@ func _bullets_vs_player() -> void:
 
 
 func _enemies_vs_player() -> void:
-	if player.invuln > 0.0 or not player.alive:
-		return
+	var vulnerable := player.invuln <= 0.0 and player.alive
 	for e in enemies:
-		if e.alive and Track.distance(e.s, e.th, e.h, player.s, player.th, Player.H) < e.spec.radius + 0.5:
-			if e.damage(4.0):
-				_on_enemy_killed(e)
-			_hurt_player()
-			return
+		if not e.alive or not e.touches(player) or not vulnerable:
+			continue
+		if e.invulnerable:
+			fx.sparks(player.global_position, e.spec.color, 20, 18.0, 1.0, 0.35)
+		elif e.damage(4.0):
+			_on_enemy_killed(e)
+		_hurt_player()
+		vulnerable = false
 
 
 func _pickups_vs_player() -> void:

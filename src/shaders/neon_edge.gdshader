@@ -9,7 +9,7 @@ uniform float width = 0.07;
 uniform float min_pixel = 0.0022;
 instance uniform float hit = 0.0;
 instance uniform float fade = 1.0;
-instance uniform float pulse = 0.0;
+instance uniform float phase = 0.0;
 
 varying float near_fade;
 
@@ -24,6 +24,7 @@ void vertex() {
 }
 
 void fragment() {
+	float pulse = 0.5 + 0.5 * sin(TIME * 6.0 + phase);
 	float edge = 1.0 - abs(UV.x);
 	float core = smoothstep(0.0, 0.6, edge);
 	vec3 c = mix(color, vec3(1.0), 0.12 * core + hit * 0.35);

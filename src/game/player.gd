@@ -35,6 +35,7 @@ var charge := 0.0
 var invuln := 0.0
 var alive := true
 var min_speed_override := 0.0
+var frozen := false
 var shield_t := 0.0
 var rapid_t := 0.0
 
@@ -70,7 +71,7 @@ func step(dt: float, input: Dictionary) -> Array[Dictionary]:
 	var y: float = input.y
 	var target := BASE_SPEED + (y * (MAX_SPEED - BASE_SPEED) if y > 0.0 else y * (BASE_SPEED - MIN_SPEED))
 	target = maxf(target, min_speed_override)
-	speed = move_toward(speed, target, 45.0 * dt)
+	speed = 0.0 if frozen else move_toward(speed, target, 45.0 * dt)
 	s += speed * dt
 	if not alive:
 		return shots

@@ -12,6 +12,8 @@ const PATTERNS_BY_KIND := {
 	"tank": ["tank_escort"],
 	"seeker": ["seeker_dive"],
 	"swarm": ["swarm_spiral", "swarm_spiral"],
+	"barrier": ["barrier_gate", "barrier_gate"],
+	"rotor": ["rotor"],
 }
 
 
@@ -74,6 +76,12 @@ static func _pattern(name: String, s: float, rng: RandomNumberGenerator) -> Arra
 		"swarm_spiral":
 			for i in 12:
 				out.append(_spawn("swarm", s + i * 2.5, c + i * TAU / 6.0, c + i * TAU / 6.0))
+		"barrier_gate":
+			out.append(_spawn("barrier", s, c, rng.randf_range(1.0, 2.0)))
+			if rng.randf() < 0.45:
+				out.append(_spawn("barrier", s + 26.0, c + PI, rng.randf_range(1.0, 1.8)))
+		"rotor":
+			out.append(_spawn("rotor", s, c, 1.0 if rng.randf() < 0.5 else -1.0))
 		"tank_escort":
 			out.append(_spawn("tank", s, c))
 			out.append(_spawn("drone", s - 8.0, c - 0.55))

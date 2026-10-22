@@ -44,5 +44,5 @@ void fragment() {
 	vec3 lines = tint * light * (1.0 + wave * 3.0);
 	vec3 panel = tint * 0.035 + vec3(0.0, 0.004, 0.012);
 	ALBEDO = (panel + lines) * fade + vec3(flash) * (0.3 + major);
-	ALPHA = clamp(0.7 + light * 0.4 + wave, 0.0, 1.0) * mix(0.55, 1.0, fade);
+	ALPHA = clamp(0.7 + light * 0.4 + wave, 0.0, 1.0) * smoothstep(0.06, 0.45, fade);
 }

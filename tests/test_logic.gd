@@ -10,6 +10,7 @@ func _init() -> void:
 	_test_angle_helpers()
 	_test_wave_plans()
 	_test_levels()
+	_check(is_zero_approx(fmod(Tunnel.CHUNK, Tunnel.STEP)), "tunnel chunks tile without gaps")
 	print("%d checks, %d failures" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 

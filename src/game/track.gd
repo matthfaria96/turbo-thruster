@@ -6,9 +6,12 @@ extends RefCounted
 
 const RADIUS := 7.0
 const RAMP := 160.0
+const CACHE_STEP := 0.5
 
 var _waves_x: Array[Vector3] = []
 var _waves_y: Array[Vector3] = []
+var _origins := PackedVector3Array()
+var _forwards := PackedVector3Array()
 
 
 func _init(curve: float, seed_value: int) -> void:
@@ -33,12 +36,24 @@ func center(s: float) -> Vector3:
 	return Vector3(x * ramp, y * ramp, -s)
 
 
-## Frame at distance s: x = right, y = up, -z = forward.
+## Frame at distance s: x = right, y = up, -z = forward. Served from a
+## lazily-grown lookup table (step CACHE_STEP) with linear interpolation.
 func frame(s: float) -> Transform3D:
-	var forward := (center(s + 0.5) - center(s - 0.5)).normalized()
+	var x := maxf(s, -CACHE_STEP * 2.0) / CACHE_STEP + 2.0
+	var i := int(x)
+	_ensure_cached(i + 1)
+	var f := x - i
+	var origin := _origins[i].lerp(_origins[i + 1], f)
+	var forward := _forwards[i].lerp(_forwards[i + 1], f).normalized()
 	var up := (Vector3.UP - forward * forward.dot(Vector3.UP)).normalized()
-	var right := forward.cross(up)
-	return Transform3D(Basis(right, up, -forward), center(s))
+	return Transform3D(Basis(forward.cross(up), up, -forward), origin)
+
+
+func _ensure_cached(index: int) -> void:
+	while _origins.size() <= index:
+		var cs := (_origins.size() - 2) * CACHE_STEP
+		_origins.append(center(cs))
+		_forwards.append((center(cs + 0.5) - center(cs - 0.5)).normalized())
 
 
 ## Unit vector from the axis toward the wall at angle th.

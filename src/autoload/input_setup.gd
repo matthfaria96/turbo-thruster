@@ -24,7 +24,15 @@ const HELP := [
 ]
 
 
+## Menus also navigate with WASD (Godot's ui_* actions only have arrows).
+const UI_KEYS := {"ui_up": KEY_W, "ui_down": KEY_S, "ui_left": KEY_A, "ui_right": KEY_D}
+
+
 static func register() -> void:
+	for action: String in UI_KEYS:
+		var ev := InputEventKey.new()
+		ev.physical_keycode = UI_KEYS[action]
+		InputMap.action_add_event(action, ev)
 	for action: String in ACTIONS:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action, 0.3)
