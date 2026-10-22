@@ -11,7 +11,7 @@ func _init(p_main: Node) -> void:
 	super(p_main)
 	var col := centered_column(720)
 	col.add_theme_constant_override("separation", 10)
-	col.add_child(UiStyle.title("CONFIGURAÇÕES", 40))
+	col.add_child(ArcadeTitle.make("CONFIGURAÇÕES", 40))
 	var panel := PanelContainer.new()
 	col.add_child(panel)
 	var list := VBoxContainer.new()

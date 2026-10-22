@@ -34,7 +34,7 @@ func _build(score: int, time_text: String) -> void:
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 14)
 	panel.add_child(vb)
-	vb.add_child(UiStyle.title("NOVO RECORDE!", 44, UiStyle.GOLD))
+	vb.add_child(ArcadeTitle.make("NOVO RECORDE!", 40, UiStyle.GOLD))
 	vb.add_child(UiStyle.label("%s pontos · %s" % [Hud.format_int(score), time_text], 24, UiStyle.TEXT,
 		HORIZONTAL_ALIGNMENT_CENTER, true))
 	vb.add_child(UiStyle.label("Digite suas iniciais", 20, UiStyle.DIM, HORIZONTAL_ALIGNMENT_CENTER))

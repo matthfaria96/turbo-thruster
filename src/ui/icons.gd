@@ -143,11 +143,12 @@ static func _ship(ci: CanvasItem, c: Vector2, r: float, color: Color) -> void:
 	ci.draw_polyline(pts, color, LINE, true)
 
 
-static func _barrier(ci: CanvasItem, c: Vector2, r: float, color: Color) -> void:
-	ci.draw_arc(c, r * 0.8, PI * 0.15, PI * 0.85, 12, color, r * 0.45, false)
+static func _barrier(ci: CanvasItem, center: Vector2, r: float, color: Color) -> void:
+	var c := center - Vector2(0, r * 0.75)
+	ci.draw_arc(c, r * 1.15, PI * 0.12, PI * 0.88, 16, color, r * 0.6, false)
 	for i in 4:
-		var a := lerpf(PI * 0.2, PI * 0.8, i / 3.0)
-		ci.draw_line(c + Vector2(cos(a), sin(a)) * r * 0.58, c + Vector2(cos(a), sin(a)) * r * 1.02, Color(0, 0, 0, 0.6), 1.5)
+		var a := lerpf(PI * 0.22, PI * 0.78, i / 3.0)
+		ci.draw_line(c + Vector2(cos(a), sin(a)) * r * 0.85, c + Vector2(cos(a), sin(a)) * r * 1.45, Color(0, 0, 0, 0.55), 1.5)
 
 
 static func _rotor(ci: CanvasItem, c: Vector2, r: float, color: Color) -> void:

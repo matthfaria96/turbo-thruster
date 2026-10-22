@@ -14,7 +14,7 @@ var _panel: SidePanel
 var _markers: TargetMarkers
 var _route: RouteMap
 var _route_holder: Control
-var _announce: Label
+var _announce: ArcadeTitle
 var _announce_sub: Label
 var _announce_box: Control
 var _announce_tween: Tween
@@ -87,8 +87,7 @@ func _build_announce() -> void:
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_theme_constant_override("separation", 2)
 	center.add_child(vb)
-	_announce = UiStyle.title("", 60)
-	_announce.label_settings.shadow_color = Color(0, 0, 0, 0.6)
+	_announce = ArcadeTitle.make("", 56)
 	vb.add_child(_announce)
 	_announce_sub = UiStyle.label("", 26, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_CENTER, true)
 	_announce_sub.label_settings.outline_size = 10
@@ -139,8 +138,9 @@ func set_boss_health(ratio: float) -> void:
 
 
 func announce(text: String, sub := "", duration := 1.8, color := UiStyle.ACCENT) -> void:
-	_announce.text = text
-	_announce.label_settings.outline_color = Color(color, 0.85)
+	_announce.set_text(text)
+	_announce.set_accent(color)
+	_announce.visible = text != ""
 	_announce_sub.text = sub
 	if not UiStyle.supports_display(sub):
 		_announce_sub.label_settings.font = UiStyle.font()

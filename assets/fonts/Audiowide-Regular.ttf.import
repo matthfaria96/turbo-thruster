@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://dojjungn54dby"
-path="res://.godot/imported/Orbitron.ttf-4aa5bef4a915ff1c3ef70d74e72864ce.fontdata"
+uid="uid://cyjl7ow1v667i"
+path="res://.godot/imported/Audiowide-Regular.ttf-62e85edd5fada4bf3a870f3432dcfb6f.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/Orbitron.ttf"
-dest_files=["res://.godot/imported/Orbitron.ttf-4aa5bef4a915ff1c3ef70d74e72864ce.fontdata"]
+source_file="res://assets/fonts/Audiowide-Regular.ttf"
+dest_files=["res://.godot/imported/Audiowide-Regular.ttf-62e85edd5fada4bf3a870f3432dcfb6f.fontdata"]
 
 [params]
 

@@ -16,10 +16,16 @@ static var _body: FontVariation
 static var _display: FontVariation
 
 const BODY_FONT := preload("res://assets/fonts/Rajdhani-SemiBold.ttf")
-const DISPLAY_FONT := preload("res://assets/fonts/Orbitron.ttf")
 
 
+const ARCADE_FONT := preload("res://assets/fonts/Audiowide-Regular.ttf")
 const LCD_FONT := preload("res://assets/fonts/DSEG7Classic-Bold.ttf")
+
+
+## Digital arcade face for headings (Audiowide, full Portuguese accents).
+static func arcade_font() -> Font:
+	return ARCADE_FONT
+
 const TERM_FONT := preload("res://assets/fonts/ShareTechMono-Regular.ttf")
 
 
@@ -42,13 +48,12 @@ static func font(_bold := false) -> Font:
 	return _body
 
 
-## Geometric display face for titles and numbers (Orbitron, heavy).
+## Digital display face for titles and numbers (Audiowide).
 static func display_font() -> Font:
 	if _display == null:
 		_display = FontVariation.new()
-		_display.base_font = DISPLAY_FONT
-		_display.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): 800}
-		_display.spacing_glyph = 2
+		_display.base_font = ARCADE_FONT
+		_display.spacing_glyph = 1
 	return _display
 
 
@@ -106,11 +111,8 @@ static func label(text: String, size := 22, color := TEXT, align := HORIZONTAL_A
 	return l
 
 
-## Orbitron draws the tilde like a grave accent; use Rajdhani for ã/õ.
-static func supports_display(text: String) -> bool:
-	for ch in ["ã", "õ", "Ã", "Õ"]:
-		if text.contains(ch):
-			return false
+## Kept for callers: the display face now covers every Portuguese accent.
+static func supports_display(_text: String) -> bool:
 	return true
 
 

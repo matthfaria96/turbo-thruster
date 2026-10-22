@@ -183,5 +183,5 @@ src/shaders/    túnel, brilho neon, partículas, portal e vinheta
 Música e efeitos sonoros originais de **Kenta Cho** (Torus Trooper), sob a
 licença BSD. Veja `UPSTREAM_README.txt` e `LICENSE`.
 
-Fontes **Orbitron**, **Rajdhani**, **Share Tech Mono** e **DSEG** sob a SIL
+Fontes **Audiowide**, **Rajdhani**, **Share Tech Mono** e **DSEG** sob a SIL
 Open Font License (veja `assets/fonts/`).

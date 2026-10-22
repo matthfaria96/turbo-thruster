@@ -5,8 +5,11 @@ extends Screen
 func _init(p_main: Node) -> void:
 	super(p_main)
 	var col := centered_column(420)
-	col.add_child(UiStyle.title("TURBO THRUSTER", 84))
-	col.add_child(UiStyle.label("Corrida arcade neon dentro do túnel", 22, UiStyle.DIM, HORIZONTAL_ALIGNMENT_CENTER))
+	col.add_child(ArcadeTitle.make("TURBO THRUSTER", 76))
+	var tagline := UiStyle.label("CORRIDA ARCADE NEON", 20, Color(1.0, 0.45, 0.85), HORIZONTAL_ALIGNMENT_CENTER, true)
+	tagline.label_settings.outline_size = 6
+	tagline.label_settings.outline_color = Color(0.35, 0.0, 0.3)
+	col.add_child(tagline)
 	col.add_child(spacer(36))
 	var play := UiStyle.button("Campanha", main.show_level_select)
 	var best := Save.arcade_best()

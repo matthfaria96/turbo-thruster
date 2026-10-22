@@ -27,7 +27,7 @@ func _build(heading: String, subtitle: String, rows: Array, buttons: Array, acce
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	panel.add_child(vb)
-	vb.add_child(UiStyle.title(heading, 40, accent))
+	vb.add_child(ArcadeTitle.make(heading, 38, accent))
 	if subtitle != "":
 		vb.add_child(UiStyle.label(subtitle, 22, UiStyle.DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	if not rows.is_empty():

@@ -5,7 +5,7 @@ extends Screen
 func _init(p_main: Node) -> void:
 	super(p_main)
 	var col := centered_column(820)
-	col.add_child(UiStyle.title("CONTROLES", 54))
+	col.add_child(ArcadeTitle.make("CONTROLES", 48))
 	var panel := PanelContainer.new()
 	col.add_child(panel)
 	var grid := GridContainer.new()

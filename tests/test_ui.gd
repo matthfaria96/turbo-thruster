@@ -25,7 +25,7 @@ func _initialize() -> void:
 	var below := root.gui_get_focus_owner()
 	_check(below != card, "S moves down the sector grid")
 	# Step sideways and back; which way first depends on the card's column.
-	var on_left := (below as Control).get_global_rect().position.x < root.get_visible_rect().size.x * 0.5
+	var on_left := (below as Control).find_valid_focus_neighbor(SIDE_RIGHT) != null
 	await _press(KEY_D if on_left else KEY_A)
 	_check(root.gui_get_focus_owner() != below, "A/D moves across the sector grid")
 	await _press(KEY_A if on_left else KEY_D)
@@ -33,6 +33,17 @@ func _initialize() -> void:
 	await _press(KEY_ESCAPE)
 	await process_frame
 	_check((root.gui_get_focus_owner() as Button).text == "Campanha", "Esc returns to menu")
+	# The briefing must keep the same size for unlocked and locked sectors.
+	await _press(KEY_ESCAPE)
+	await _press(KEY_ENTER)
+	await process_frame
+	var panel := _find_briefing(root)
+	var size_a := panel.size if panel else Vector2.ZERO
+	await _press(KEY_D)
+	await _press(KEY_S)
+	await _press(KEY_S)
+	await process_frame
+	_check(panel != null and panel.size == size_a, "sector briefing keeps a fixed size (%s)" % size_a)
 	print("ui checks done, failures: %d" % _fail)
 	quit(1 if _fail > 0 else 0)
 
@@ -54,3 +65,10 @@ func _check(ok: bool, what: String) -> void:
 		printerr("FAIL: " + what)
 	else:
 		print("ok: " + what)
+
+
+func _find_briefing(node: Node) -> Control:
+	for child in node.find_children("*", "PanelContainer", true, false):
+		if (child as Control).size.x >= 500.0:
+			return child
+	return null
