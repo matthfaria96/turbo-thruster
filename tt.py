@@ -86,4 +86,17 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback
+        try:
+            log = os.path.join(os.path.expanduser("~"), "turbo-thruster-crash.log")
+            with open(log, "w") as f:
+                traceback.print_exc(file=f)
+        except Exception:
+            pass
+        traceback.print_exc()
+        raise
