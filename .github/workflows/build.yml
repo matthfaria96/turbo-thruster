@@ -5,39 +5,45 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+env:
+  GODOT_VERSION: 4.7.2
+
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            artifact: torus-thruster-windows
-          - os: macos-latest
-            artifact: torus-thruster-macos
-          - os: ubuntu-latest
-            artifact: torus-thruster-linux
-    runs-on: ${{ matrix.os }}
+  export:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
+      - name: Install Godot and export templates
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q godot.zip && mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+          dest="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dest" && unzip -q templates.tpz && mv templates/* "$dest/"
 
-      - name: Build
-        run: pyinstaller tt.spec
+      - name: Import and test
+        run: |
+          godot --headless --import
+          godot --headless -s tests/test_logic.gd
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Export
+        run: |
+          mkdir -p build/windows build/macos build/linux
+          godot --headless --export-release "Windows" build/windows/TurboThruster.exe
+          godot --headless --export-release "macOS" build/macos/TurboThruster.zip
+          godot --headless --export-release "Linux" build/linux/TurboThruster.x86_64
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: |
-            dist/torus-thruster*
-            dist/Torus Thruster.app/**
-          if-no-files-found: warn
+          name: turbo-thruster-windows
+          path: build/windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: turbo-thruster-macos
+          path: build/macos
+      - uses: actions/upload-artifact@v4
+        with:
+          name: turbo-thruster-linux
+          path: build/linux

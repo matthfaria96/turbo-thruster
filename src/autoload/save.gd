@@ -1,0 +1,123 @@
+extends Node
+## Persistent settings + campaign progress. Also applies display settings.
+
+signal settings_changed
+
+const SAVE_PATH := "user://turbo_thruster.json"
+const MIN_WINDOW := Vector2i(960, 540)
+const WINDOW_SIZES: Array[Vector2i] = [
+	Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440),
+]
+const DEFAULT_SETTINGS := {
+	"display_mode": 0,
+	"window_size": 0,
+	"vsync": true,
+	"music": 0.6,
+	"sfx": 0.8,
+	"glow": 1.0,
+	"shake": true,
+	"autofire": true,
+}
+
+var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
+var unlocked := 1
+var best: Dictionary = {}
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	InputSetup.register()
+	load_data()
+	get_window().min_size = MIN_WINDOW
+	apply_display()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key and key.pressed and not key.echo and key.physical_keycode == KEY_F11:
+		set_setting("display_mode", 0 if settings.display_mode == 1 else 1)
+		get_viewport().set_input_as_handled()
+
+
+func set_setting(key: String, value: Variant) -> void:
+	settings[key] = value
+	if key in ["display_mode", "window_size", "vsync"]:
+		apply_display()
+	save_data()
+	settings_changed.emit()
+
+
+func apply_display() -> void:
+	DisplayServer.window_set_vsync_mode(
+		DisplayServer.VSYNC_ENABLED if settings.vsync else DisplayServer.VSYNC_DISABLED)
+	var win := get_window()
+	if settings.display_mode == 1:
+		win.mode = Window.MODE_FULLSCREEN
+		return
+	win.mode = Window.MODE_WINDOWED
+	var screen := DisplayServer.screen_get_usable_rect(win.current_screen)
+	var wanted: Vector2i = WINDOW_SIZES[clampi(int(settings.window_size), 0, WINDOW_SIZES.size() - 1)]
+	var size := Vector2i(mini(wanted.x, screen.size.x), mini(wanted.y, screen.size.y))
+	win.size = size
+	win.position = screen.position + (screen.size - size) / 2
+
+
+func is_unlocked(level: int) -> bool:
+	return level < unlocked
+
+
+func best_for(level: int) -> Dictionary:
+	return best.get(str(level), {})
+
+
+## Stores a finished sector. Returns true when it is a new best score.
+func record_result(level: int, score: int, rank: String) -> bool:
+	var key := str(level)
+	var prev: Dictionary = best.get(key, {})
+	var is_best := score > int(prev.get("score", -1))
+	if is_best:
+		best[key] = {"score": score, "rank": rank}
+	unlocked = maxi(unlocked, mini(level + 2, Levels.count()))
+	save_data()
+	return is_best
+
+
+func load_data() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+	var text := FileAccess.get_file_as_string(SAVE_PATH)
+	var parsed: Variant = JSON.parse_string(text)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_warning("Save file is corrupt; using defaults.")
+		return
+	var data: Dictionary = parsed
+	var loaded: Dictionary = data.get("settings", {})
+	for key: String in DEFAULT_SETTINGS:
+		settings[key] = _coerce(loaded.get(key), DEFAULT_SETTINGS[key])
+	unlocked = clampi(int(data.get("unlocked", 1)), 1, Levels.count())
+	var loaded_best: Variant = data.get("best", {})
+	if typeof(loaded_best) == TYPE_DICTIONARY:
+		for key: Variant in loaded_best:
+			var entry: Variant = loaded_best[key]
+			if typeof(entry) == TYPE_DICTIONARY and entry.has("score") and entry.has("rank"):
+				best[str(key)] = {"score": int(entry.score), "rank": str(entry.rank)}
+
+
+## JSON stores every number as float; convert back to the default's type.
+func _coerce(value: Variant, fallback: Variant) -> Variant:
+	match typeof(fallback):
+		TYPE_BOOL:
+			return value if typeof(value) == TYPE_BOOL else fallback
+		TYPE_INT:
+			return int(value) if typeof(value) in [TYPE_INT, TYPE_FLOAT] else fallback
+		TYPE_FLOAT:
+			return clampf(float(value), 0.0, 1.0) if typeof(value) in [TYPE_INT, TYPE_FLOAT] else fallback
+	return fallback
+
+
+func save_data() -> void:
+	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if file == null:
+		push_warning("Could not write save file: %s" % FileAccess.get_open_error())
+		return
+	file.store_string(JSON.stringify({"settings": settings, "unlocked": unlocked, "best": best}, "\t"))
