@@ -112,6 +112,13 @@ static func build(key: String, shape: Dictionary, color: Color, energy := 2.4, f
 	return root
 
 
+## Raw line segments (e.g. spikes) as a cached thick-line mesh instance.
+static func instance_segments(key: String, segments: Array, color: Color, energy := 2.4, width := 0.07) -> MeshInstance3D:
+	if not _mesh_cache.has(key):
+		_mesh_cache[key] = [null, edge_mesh_from_segments(segments)]
+	return _instance(_mesh_cache[key][1], edge_material(color, energy, width))
+
+
 static func edge_material(color: Color, energy := 2.4, width := 0.07) -> ShaderMaterial:
 	var key := "e%s|%.2f|%.3f" % [color.to_html(), energy, width]
 	if not _mat_cache.has(key):

@@ -2,7 +2,7 @@ class_name Boss
 extends Node3D
 ## Sector boss: hovers ahead of the player and cycles bullet patterns.
 
-const PATTERNS := ["fan", "ring", "spiral", "burst"]
+const PATTERNS := ["fan", "galaxy", "ring", "spiral", "burst"]
 const DEATH_TIME := 1.8
 
 var title := ""
@@ -114,6 +114,7 @@ func _start_pattern() -> void:
 		"fan": _shots_left = 3
 		"ring": _shots_left = 3
 		"spiral": _shots_left = 36
+		"galaxy": _shots_left = 40
 		"burst": _shots_left = 6
 
 
@@ -131,6 +132,11 @@ func _fire(game: Game) -> void:
 			game.fire_bullet(s, a, h, 20.0, 0.0)
 			game.fire_bullet(s, a + PI, h, 20.0, 0.0)
 			_shot_cd = 0.07
+		"galaxy":
+			for arm in 4:
+				var ga := th + arm * TAU / 4.0 + _pattern_t * 2.4
+				game.fire_bullet(s, ga, h, 15.0, 0.55)
+			_shot_cd = 0.11
 		"burst":
 			game.fire_aimed(s, th, h, 34.0, 1, 0.0)
 			_shot_cd = 0.2

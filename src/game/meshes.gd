@@ -9,8 +9,8 @@ const VORTEX_SHADER := preload("res://src/shaders/vortex.gdshader")
 static var _materials: Dictionary = {}
 
 
-static func additive(energy := 2.5, core := 0.0) -> ShaderMaterial:
-	return _cached("a%.2f|%.2f" % [energy, core], PARTICLE_SHADER, {"energy": energy, "core": core})
+static func additive(energy := 2.5, core := 0.0, flare := 0.0) -> ShaderMaterial:
+	return _cached("a%.2f|%.2f|%.2f" % [energy, core, flare], PARTICLE_SHADER, {"energy": energy, "core": core, "flare": flare})
 
 
 static func streak(energy := 3.0, core := 0.6) -> ShaderMaterial:
@@ -72,6 +72,24 @@ static func enemy(kind: String) -> Node3D:
 		"mine":
 			var spin := _named("Spin", NeonGeo.build("star", NeonGeo.star(6, 1.15, 0.45, 0.35), color, 1.7, 0.14))
 			root.add_child(spin)
+		"seeker":
+			var spin := _named("Spin", NeonGeo.build("seek_core", NeonGeo.icosa(0.75), color, 1.8, 0.2, 0.05))
+			var spikes: Array = []
+			var ico: Dictionary = NeonGeo.icosa(1.0)
+			for v: Vector3 in ico.v:
+				spikes.append([v * 0.7, v * 1.45])
+			var spike_node := NeonGeo.instance_segments("seek_spikes", spikes, Color(0.75, 0.9, 1.0), 2.2, 0.04)
+			spin.add_child(spike_node)
+			root.add_child(spin)
+			var glow_core := MeshInstance3D.new()
+			var quad := QuadMesh.new()
+			quad.size = Vector2.ONE * 2.4
+			glow_core.mesh = quad
+			glow_core.material_override = additive(1.6, 0.8)
+			root.add_child(glow_core)
+		"swarm":
+			var spin := _named("Spin", NeonGeo.build("swarm_star", NeonGeo.star(4, 0.9, 0.22, 0.15), color, 2.2, 0.3, 0.05))
+			root.add_child(spin)
 		"tank":
 			var spin := _named("Spin", NeonGeo.build("icosa", NeonGeo.icosa(1.5), color, 1.7, 0.12))
 			root.add_child(spin)
@@ -109,11 +127,12 @@ static func boss(color: Color) -> Node3D:
 
 static func pickup(kind: String) -> Node3D:
 	var root := Node3D.new()
-	var color := EnemyTypes.WEAPON_COLOR if kind == "weapon" else EnemyTypes.REPAIR_COLOR
+	var info := EnemyTypes.powerup(kind)
+	var color: Color = info.color
 	root.add_child(_named("Spin", NeonGeo.build("pick_" + kind, NeonGeo.octa(0.75, 1.4), color, 2.0, 0.18)))
 	root.add_child(_named("Halo", NeonGeo.build("pick_ring", NeonGeo.ring(1.2, 24), color, 2.0, 0.0, 0.05)))
 	var label := Label3D.new()
-	label.text = "P" if kind == "weapon" else "+"
+	label.text = info.letter
 	label.font = UiStyle.display_font()
 	label.font_size = 72
 	label.outline_size = 16
@@ -148,6 +167,33 @@ static func portal() -> Node3D:
 	disc_node.material_override = disc_mat
 	disc_node.name = "Disc"
 	root.add_child(disc_node)
+	return root
+
+
+## Hexagonal-looking geodesic energy bubble (subdivided icosahedron).
+static func shield_bubble() -> Node3D:
+	var ico: Dictionary = NeonGeo.icosa(1.0)
+	var v: PackedVector3Array = ico.v
+	var faces: Array = []
+	var verts := PackedVector3Array(v)
+	var mid: Dictionary = {}
+	var midpoint := func(a: int, b: int) -> int:
+		var key := Vector2i(mini(a, b), maxi(a, b))
+		if not mid.has(key):
+			verts.append(((verts[a] + verts[b]) * 0.5).normalized())
+			mid[key] = verts.size() - 1
+		return mid[key]
+	for f: PackedInt32Array in ico.f:
+		var ab: int = midpoint.call(f[0], f[1])
+		var bc: int = midpoint.call(f[1], f[2])
+		var ca: int = midpoint.call(f[2], f[0])
+		for t in [[f[0], ab, ca], [ab, f[1], bc], [ca, bc, f[2]], [ab, bc, ca]]:
+			faces.append(PackedInt32Array(t))
+	var normalized := PackedVector3Array()
+	for p in verts:
+		normalized.append(p.normalized() * 1.9)
+	var root := NeonGeo.build("shield", {"v": normalized, "f": faces}, Color(0.35, 0.8, 1.0), 1.4, 0.05, 0.03)
+	root.name = "Shield"
 	return root
 
 

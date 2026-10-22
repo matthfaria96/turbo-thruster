@@ -12,6 +12,10 @@ const TYPES := {
 		"color": Color(1.0, 0.45, 0.1), "hp": 5.0, "score": 300, "radius": 1.2},
 	"mine": {"name": "Mina", "shape": "Estrela", "desc": "Parada no túnel. Explode ao contato.",
 		"color": Color(1.0, 0.2, 0.85), "hp": 3.0, "score": 120, "radius": 1.1},
+	"seeker": {"name": "Esfera", "shape": "Orbe de energia", "desc": "Bola de energia que mergulha direto em você.",
+		"color": Color(0.45, 0.65, 1.0), "hp": 2.0, "score": 180, "radius": 1.1},
+	"swarm": {"name": "Enxame", "shape": "Estrela", "desc": "Faíscas em espiral que vêm na sua direção.",
+		"color": Color(1.0, 0.3, 0.35), "hp": 1.0, "score": 60, "radius": 0.8},
 	"tank": {"name": "Couraçado", "shape": "Icosaedro", "desc": "Blindado, tiro em leque. Sempre solta upgrade.",
 		"color": Color(1.0, 0.82, 0.2), "hp": 16.0, "score": 800, "radius": 1.8},
 }
@@ -23,6 +27,20 @@ const SHOT_COLOR := Color(1.0, 0.85, 0.3)
 const WEAPON_COLOR := Color(0.35, 1.0, 0.45)
 const REPAIR_COLOR := Color(0.85, 0.95, 1.0)
 const GEOM_COLOR := Color(0.4, 1.0, 0.5)
+
+
+## Power-ups that drop during a sector (they never carry over).
+const POWERUPS := {
+	"weapon": {"letter": "P", "name": "ARMA +1", "color": Color(0.35, 1.0, 0.45)},
+	"repair": {"letter": "+", "name": "REPARO", "color": Color(0.85, 0.95, 1.0)},
+	"shield": {"letter": "E", "name": "ESCUDO", "color": Color(0.35, 0.8, 1.0)},
+	"rapid": {"letter": "R", "name": "RAJADA", "color": Color(1.0, 0.6, 0.15)},
+	"bomb": {"letter": "B", "name": "BOMBA", "color": Color(1.0, 0.35, 0.9)},
+}
+
+
+static func powerup(kind: String) -> Dictionary:
+	return POWERUPS[kind]
 
 
 static func get_type(kind: String) -> Dictionary:

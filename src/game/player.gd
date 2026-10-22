@@ -35,16 +35,22 @@ var charge := 0.0
 var invuln := 0.0
 var alive := true
 var min_speed_override := 0.0
+var shield_t := 0.0
+var rapid_t := 0.0
 
 var _bank := 0.0
 var _fire_cd := 0.0
 var _charge_sound := false
 var _model: Node3D
+var _shield: Node3D
 
 
 func _ready() -> void:
 	_model = Meshes.ship()
 	add_child(_model)
+	_shield = Meshes.shield_bubble()
+	_shield.visible = false
+	add_child(_shield)
 	var trail := Fx.make_trail(EnemyTypes.PLAYER_COLOR, 140, 0.28, 0.5)
 	trail.position = Vector3(0, 0, 1.1)
 	_model.add_child(trail)
@@ -55,6 +61,11 @@ func _ready() -> void:
 func step(dt: float, input: Dictionary) -> Array[Dictionary]:
 	var shots: Array[Dictionary] = []
 	invuln = maxf(0.0, invuln - dt)
+	shield_t = maxf(0.0, shield_t - dt)
+	rapid_t = maxf(0.0, rapid_t - dt)
+	_shield.visible = shield_t > 0.0 and (shield_t > 1.5 or fmod(shield_t, 0.2) > 0.08)
+	_shield.rotate_y(dt * 0.8)
+	_shield.rotate_x(dt * 0.3)
 	_fire_cd -= dt
 	var y: float = input.y
 	var target := BASE_SPEED + (y * (MAX_SPEED - BASE_SPEED) if y > 0.0 else y * (BASE_SPEED - MIN_SPEED))
@@ -69,7 +80,7 @@ func step(dt: float, input: Dictionary) -> Array[Dictionary]:
 	_model.rotation.z = _bank
 	_model.visible = invuln <= 0.0 or fmod(invuln, 0.16) > 0.07
 	if input.fire and _fire_cd <= 0.0:
-		_fire_cd = 1.0 / FIRE_RATE[weapon]
+		_fire_cd = 1.0 / (FIRE_RATE[weapon] * (1.9 if rapid_t > 0.0 else 1.0))
 		shots = _make_shots()
 		Sfx.play("shot", -16.0)
 	_update_charge(dt, input.charge)
@@ -105,6 +116,10 @@ func nova_shot(at_s: float, at_th: float) -> Dictionary:
 ## Returns true when the ship is destroyed.
 func take_hit() -> bool:
 	if invuln > 0.0 or not alive:
+		return false
+	if shield_t > 0.0:
+		shield_t = 0.0
+		invuln = 0.8
 		return false
 	hull -= 1
 	weapon = maxi(1, weapon - 1)

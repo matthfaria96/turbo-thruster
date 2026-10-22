@@ -95,6 +95,7 @@ func _ready() -> void:
 	player.s = _start_s
 	_plan = _plan.filter(func(p: Dictionary) -> bool: return p.s > _start_s)
 	_plan_total = _plan.size()
+	hud.setup_route(track, level.length, _plan)
 	Sfx.play_music(level.music)
 	hud.announce("SETOR %d" % (level_index + 1), String(level.name).to_upper(), INTRO_TIME - 0.4)
 	_sync_transforms(0.0)
@@ -114,6 +115,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	var dt := minf(delta, 1.0 / 30.0)
+	var playing := state in ACTIVE_STATES and not get_tree().paused
+	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if playing else Input.MOUSE_MODE_VISIBLE
 	state_t += dt
 	_step_state(dt)
 	var shots := player.step(dt, _read_input())
@@ -133,6 +136,7 @@ func _process(delta: float) -> void:
 	backdrop.follow(camera, dt)
 	hud.refresh({"score": score, "multiplier": multiplier, "progress": clampf(player.s / level.length, 0.0, 1.0),
 		"weapon": player.weapon, "hull": maxi(player.hull, 0), "speed": player.speed,
+		"shield": player.shield_t, "rapid": player.rapid_t, "distance": player.s,
 		"charge": player.charge}, dt)
 	if boss:
 		hud.set_boss_health(boss.health_ratio())
@@ -416,10 +420,10 @@ func _on_enemy_killed(e: Enemy) -> void:
 func _maybe_drop(e: Enemy) -> void:
 	_kills_since_drop += 1
 	var kind := ""
-	if e.kind == "tank" or _kills_since_drop >= 9:
-		kind = "repair" if player.weapon >= Player.MAX_WEAPON and player.hull < Player.MAX_HULL else "weapon"
-	elif player.hull < Player.MAX_HULL and randf() < 0.04:
-		kind = "repair"
+	if e.kind == "tank":
+		kind = "weapon" if player.weapon < Player.MAX_WEAPON else _random_powerup()
+	elif _kills_since_drop >= 8 or randf() < 0.035:
+		kind = _random_powerup()
 	if kind == "":
 		return
 	_kills_since_drop = 0
@@ -429,10 +433,38 @@ func _maybe_drop(e: Enemy) -> void:
 	pickups.append(p)
 
 
+## Weighted toward what the player needs right now.
+func _random_powerup() -> String:
+	var table := {"weapon": 4.0 if player.weapon < Player.MAX_WEAPON else 0.0,
+		"repair": 3.0 if player.hull < Player.MAX_HULL else 0.3,
+		"shield": 2.0, "rapid": 2.0, "bomb": 1.2}
+	var total := 0.0
+	for k: String in table:
+		total += table[k]
+	var roll := randf() * total
+	for k: String in table:
+		roll -= table[k]
+		if roll <= 0.0:
+			return k
+	return "rapid"
+
+
 func _collect(p: Pickup) -> void:
 	Sfx.play("pickup", -2.0)
 	fx.sparks(p.global_position, p.color(), 30, 16.0, 1.0, 0.4)
 	fx.shockwave(p.global_position, p.color(), 3.0)
+	match p.kind:
+		"shield":
+			player.shield_t = 10.0
+			hud.announce("", "ESCUDO ATIVO", 1.0, p.color())
+			return
+		"rapid":
+			player.rapid_t = 9.0
+			hud.announce("", "RAJADA!", 1.0, p.color())
+			return
+		"bomb":
+			_bomb()
+			return
 	if p.kind == "weapon":
 		if player.upgrade_weapon():
 			hud.announce("", "ARMA NÍVEL %d" % player.weapon, 1.0, UiStyle.GOOD)
@@ -445,6 +477,26 @@ func _collect(p: Pickup) -> void:
 		else:
 			score += 1000
 			fx.popup(p.global_position, "+1000", p.color())
+
+
+## Clears every bullet and heavily damages everything ahead.
+func _bomb() -> void:
+	hud.announce("BOMBA", "", 0.8, EnemyTypes.powerup("bomb").color)
+	Sfx.play("boss", -4.0, 1.3)
+	fx.shake = 0.8
+	var at := track.point(player.s + 6.0, player.th, 3.0)
+	fx.shockwave(at, Color(1, 0.6, 1), 7.0)
+	fx.sparks(at, Color(1, 0.6, 1), 80, 40.0, 2.0, 0.6)
+	tunnel.add_ripple(at, 2.5)
+	hud.set_flash(0.35)
+	create_tween().tween_method(hud.set_flash, 0.35, 0.0, 0.4)
+	_explode_all_bullets()
+	for e in enemies:
+		if e.alive and e.s < player.s + 110.0 and e.damage(10.0):
+			_on_enemy_killed(e)
+	enemies = enemies.filter(func(e: Enemy) -> bool: return e.alive)
+	if boss and boss.alive and boss.damage(boss.max_hp * 0.08):
+		_on_boss_killed()
 
 
 # --------------------------------------------------------- boss and portal
@@ -585,6 +637,7 @@ func _show_game_over() -> void:
 
 func _pause() -> void:
 	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var buttons := [
 		["Continuar", _resume],
 		["Reiniciar setor", func() -> void: _leave(level_index)],
@@ -609,6 +662,10 @@ func _close_overlay() -> void:
 	if _overlay:
 		_overlay.queue_free()
 		_overlay = null
+
+
+func _exit_tree() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func _leave(next_level: int) -> void:

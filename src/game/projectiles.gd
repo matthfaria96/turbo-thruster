@@ -5,7 +5,7 @@ extends Node3D
 
 const MAX_SHOTS := 300
 const MAX_BULLETS := 600
-const BULLET_SIZE := 0.85
+const BULLET_SIZE := 1.25
 const BULLET_RADIUS := 0.55
 
 var track: Track
@@ -18,7 +18,7 @@ var _bullet_mm: MultiMesh
 func setup(p_track: Track) -> void:
 	track = p_track
 	_shot_mm = _make_multimesh(MAX_SHOTS, Meshes.streak(3.2, 0.75))
-	_bullet_mm = _make_multimesh(MAX_BULLETS, Meshes.additive(3.0, 0.35))
+	_bullet_mm = _make_multimesh(MAX_BULLETS, Meshes.additive(3.0, 0.35, 0.9))
 
 
 func add_shot(shot: Dictionary) -> void:

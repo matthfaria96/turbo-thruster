@@ -1,6 +1,6 @@
 class_name Pickup
 extends Node3D
-## Power-up dropped by enemies: "weapon" (+1 weapon level) or "repair" (+1 hull).
+## Power-up dropped by enemies (see EnemyTypes.POWERUPS).
 
 const COLLECT_RADIUS := 2.0
 const MAGNET_RADIUS := 7.0
@@ -37,4 +37,4 @@ func step(dt: float, player: Player) -> void:
 
 
 func color() -> Color:
-	return EnemyTypes.WEAPON_COLOR if kind == "weapon" else EnemyTypes.REPAIR_COLOR
+	return EnemyTypes.powerup(kind).color

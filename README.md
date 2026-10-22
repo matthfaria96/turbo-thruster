@@ -17,10 +17,21 @@ macOS e Linux**.
 - **Multiplicador.** Inimigos destruídos soltam pequenos losangos verdes. Passe
   perto para que sejam atraídos: cada um coletado aumenta o multiplicador de
   pontos (x1, x2, x3...). Levar dano corta o multiplicador pela metade.
-- **Upgrades só valem no setor atual.** Os inimigos soltam cápsulas:
-  **P verde** sobe o nível da arma (1 a 5) e **+ azul** repara o casco. Você
-  começa cada setor com a arma no nível 1 e o casco cheio. Levar dano tira
-  um nível da arma.
+- **Mapa da rota** no canto da tela: o traçado do túnel com as curvas, o trecho
+  já percorrido, os grupos de inimigos à frente, o chefe no fim e quantos
+  metros faltam.
+- **Power-ups durante a fase** (só valem no setor atual; cada setor recomeça
+  com a arma no nível 1 e o casco cheio):
+
+  | Cápsula | Efeito |
+  | --- | --- |
+  | **P** verde | +1 nível de arma (até 5) |
+  | **+** branco | repara 1 ponto do casco |
+  | **E** azul | escudo hexagonal por 10 s (absorve um golpe) |
+  | **R** laranja | rajada: cadência quase dobrada por 9 s |
+  | **B** rosa | bomba: apaga todas as balas e destrói o que está à frente |
+
+  Levar dano tira um nível da arma.
 - **Inimigos fáceis de reconhecer.** Cada tipo tem forma e cor próprias, e a
   tela de seleção de setor mostra quais aparecem em cada um:
 
@@ -30,22 +41,24 @@ macOS e Linux**.
   | Cata-vento | hélice | roxo | rápido, ziguezagueia |
   | Cubo | cubo | laranja | para à sua frente e atira em você |
   | Mina | estrela | magenta | parada no túnel, explode ao contato |
+  | Esfera | orbe de energia com espinhos | azul | mergulha direto em você |
+  | Enxame | estrelinhas | vermelho | chegam em espiral na sua direção |
   | Couraçado | icosaedro | dourado | blindado, tiro em leque, sempre solta upgrade |
 
   A sua nave é **ciano** e atira rastros **amarelos**. As balas inimigas são
-  orbes **laranja-avermelhados**. A grade do túnel fica mais apagada de
+  estrelas de energia **laranja-avermelhadas**. A grade do túnel fica mais apagada de
   propósito, para nunca competir com a ação.
 - **Nota por setor** (S/A/B/C), calculada pelos abates e pelo dano recebido.
   O recorde de cada setor fica salvo.
 
 ## Controles
 
-| Ação | Teclado | Controle |
+| Ação | Teclado e mouse | Controle |
 | --- | --- | --- |
-| Mover pelo túnel | A / D ou ← / → | analógico / D-pad |
-| Acelerar / frear | W / S ou ↑ / ↓ | analógico |
-| Atirar | Z / Espaço / J (ou tiro automático) | A / RT |
-| Tiro carregado (segure e solte) | X / K / Shift | X / LT |
+| Ir para os lados | A / D | analógico / D-pad |
+| Acelerar (frente) / frear (trás) | W / S | analógico |
+| Atirar (segurar) | botão esquerdo do mouse | A / RT |
+| Tiro carregado (segure e solte) | botão direito do mouse | X / LT |
 | Pausar | Esc / P | Start |
 | Tela cheia | F11 | — |
 

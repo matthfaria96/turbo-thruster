@@ -18,6 +18,8 @@ var _weapon_pips: Array[ColorRect] = []
 var _hull_pips: Array[ColorRect] = []
 var _speed: Label
 var _charge_box: VBoxContainer
+var _route: RouteMap
+var _chips: Dictionary = {}
 var _charge_bar: ProgressBar
 var _charge_label: Label
 var _announce: Label
@@ -114,7 +116,7 @@ func _build_top(index: int, level: Dictionary) -> HBoxContainer:
 
 
 ## Geometry-Wars-style translucent block with a coloured top stripe.
-func _glass(content: Control, accent: Color) -> PanelContainer:
+func _glass(content: Control, accent: Color, v_flag := Control.SIZE_SHRINK_BEGIN) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := UiStyle.box(Color(0.02, 0.05, 0.1, 0.55), Color(accent, 0.9), 0, 3, 10)
@@ -122,6 +124,7 @@ func _glass(content: Control, accent: Color) -> PanelContainer:
 	panel.add_theme_stylebox_override("panel", sb)
 	content.custom_minimum_size.x = 260
 	panel.add_child(content)
+	panel.size_flags_vertical = v_flag
 	return panel
 
 
@@ -131,23 +134,57 @@ func _build_bottom() -> HBoxContainer:
 	var left := _side_box(HORIZONTAL_ALIGNMENT_LEFT)
 	left.add_child(UiStyle.label("CASCO", 15, UiStyle.DIM))
 	left.add_child(_pips(Player.MAX_HULL, EnemyTypes.PLAYER_COLOR, _hull_pips, BoxContainer.ALIGNMENT_BEGIN))
-	row.add_child(_glass(left, EnemyTypes.PLAYER_COLOR))
+	row.add_child(_glass(left, EnemyTypes.PLAYER_COLOR, Control.SIZE_SHRINK_END))
+	var middle := VBoxContainer.new()
+	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	middle.alignment = BoxContainer.ALIGNMENT_END
+	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.add_theme_constant_override("separation", 8)
+	var chips := HBoxContainer.new()
+	chips.alignment = BoxContainer.ALIGNMENT_CENTER
+	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for kind in ["shield", "rapid"]:
+		var chip := _chip(kind)
+		chips.add_child(chip)
+		_chips[kind] = chip
+	middle.add_child(chips)
 	_charge_box = VBoxContainer.new()
-	_charge_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_charge_box.alignment = BoxContainer.ALIGNMENT_END
 	_charge_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_charge_label = UiStyle.label("CARGA", 15, UiStyle.DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
 	_charge_box.add_child(_charge_label)
 	_charge_bar = _bar(Vector2(260, 8), Color(0.8, 1.0, 1.0))
 	_charge_box.add_child(_charge_bar)
 	_charge_box.modulate.a = 0.0
-	row.add_child(_charge_box)
-	var right := _side_box(HORIZONTAL_ALIGNMENT_RIGHT)
-	var hint := UiStyle.label("X  tiro carregado     Esc  pausa", 15, Color(UiStyle.DIM, 0.8), HORIZONTAL_ALIGNMENT_RIGHT)
-	right.alignment = BoxContainer.ALIGNMENT_END
-	right.add_child(hint)
-	row.add_child(right)
+	middle.add_child(_charge_box)
+	middle.add_child(UiStyle.label("Clique esq.  atirar     Clique dir.  carregar     Esc  pausa", 14,
+		Color(UiStyle.DIM, 0.75), HORIZONTAL_ALIGNMENT_CENTER))
+	row.add_child(middle)
+	_route = RouteMap.new()
+	var holder := PanelContainer.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := UiStyle.box(Color(0.02, 0.05, 0.1, 0.55), UiStyle.DANGER, 0, 3, 0)
+	sb.border_width_top = 3
+	holder.add_theme_stylebox_override("panel", sb)
+	holder.add_child(_route)
+	row.add_child(holder)
 	return row
+
+
+func _chip(kind: String) -> PanelContainer:
+	var info := EnemyTypes.powerup(kind)
+	var chip := PanelContainer.new()
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := UiStyle.box(Color(0.02, 0.05, 0.1, 0.7), info.color, 2, 4, 6)
+	chip.add_theme_stylebox_override("panel", sb)
+	var l := UiStyle.label(info.name, 16, info.color, HORIZONTAL_ALIGNMENT_CENTER, true)
+	l.name = "Text"
+	chip.add_child(l)
+	chip.visible = false
+	return chip
+
+
+func setup_route(track: Track, length: float, plan: Array[Dictionary]) -> void:
+	_route.setup(track, length, plan)
 
 
 func _build_announce() -> void:
@@ -213,6 +250,13 @@ func refresh(state: Dictionary, dt: float) -> void:
 	_set_pips(_weapon_pips, state.weapon)
 	_set_pips(_hull_pips, state.hull)
 	_speed.text = "%d km/h" % int(state.speed * 9.0)
+	_route.update_state(state.distance, _boss_box.visible, dt)
+	for kind: String in _chips:
+		var left: float = state[kind]
+		var chip: PanelContainer = _chips[kind]
+		chip.visible = left > 0.0
+		if chip.visible:
+			(chip.get_node("Text") as Label).text = "%s  %ds" % [EnemyTypes.powerup(kind).name, ceili(left)]
 	var charge: float = state.charge
 	_charge_bar.value = charge
 	_charge_label.text = "PRONTO — SOLTE!" if charge >= 1.0 else "CARREGANDO"

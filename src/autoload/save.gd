@@ -4,6 +4,7 @@ extends Node
 signal settings_changed
 
 const SAVE_PATH := "user://turbo_thruster.json"
+const SAVE_VERSION := 2
 const MIN_WINDOW := Vector2i(960, 540)
 const WINDOW_SIZES: Array[Vector2i] = [
 	Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440),
@@ -16,7 +17,7 @@ const DEFAULT_SETTINGS := {
 	"sfx": 0.8,
 	"glow": 1.0,
 	"shake": true,
-	"autofire": true,
+	"autofire": false,
 }
 
 var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
@@ -94,6 +95,8 @@ func load_data() -> void:
 	var loaded: Dictionary = data.get("settings", {})
 	for key: String in DEFAULT_SETTINGS:
 		settings[key] = _coerce(loaded.get(key), DEFAULT_SETTINGS[key])
+	if int(data.get("version", 1)) < 2:
+		settings.autofire = false
 	unlocked = clampi(int(data.get("unlocked", 1)), 1, Levels.count())
 	var loaded_best: Variant = data.get("best", {})
 	if typeof(loaded_best) == TYPE_DICTIONARY:
@@ -120,4 +123,4 @@ func save_data() -> void:
 	if file == null:
 		push_warning("Could not write save file: %s" % FileAccess.get_open_error())
 		return
-	file.store_string(JSON.stringify({"settings": settings, "unlocked": unlocked, "best": best}, "\t"))
+	file.store_string(JSON.stringify({"version": SAVE_VERSION, "settings": settings, "unlocked": unlocked, "best": best}, "\t"))

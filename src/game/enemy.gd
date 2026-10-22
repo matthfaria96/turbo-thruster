@@ -40,7 +40,7 @@ func setup(p_kind: String, p_s: float, p_th: float, phase: float, difficulty: fl
 	_orbit = _model.get_node_or_null("Orbit")
 	_geometry = Meshes.geometry_of(_model)
 	_model.scale = Vector3.ONE * 0.01
-	if kind in ["drone", "weaver", "tank"]:
+	if kind in ["drone", "weaver", "tank", "seeker", "swarm"]:
 		var trail := Fx.make_trail(spec.color, 18, 0.25, 0.5 if kind == "tank" else 0.3)
 		trail.position = Vector3(0, 0, -0.6)
 		add_child(trail)
@@ -62,6 +62,15 @@ func step(dt: float, game: Game) -> void:
 			_hold_ahead(dt, game, 36.0, 7.0)
 			th = lerp_angle(th, game.player.th, dt * 0.35)
 			_try_fire(dt, game, ahead, 1.5, func(): game.fire_aimed(s, th, h, 24.0, 3 if _difficulty > 1.3 else 1, 0.12))
+		"seeker":
+			if age > 0.6:
+				s -= 20.0 * dt
+				th = lerp_angle(th, game.player.th, dt * 1.3)
+			h = 1.1 + sin(age * 4.0 + _phase) * 0.25
+		"swarm":
+			s -= 12.0 * dt
+			th = wrapf(_base_th + age * 1.9, -PI, PI)
+			h = 1.0 + sin(age * 6.0 + _phase) * 0.4
 		"tank":
 			_hold_ahead(dt, game, 44.0, 9.0)
 			th = lerp_angle(th, game.player.th, dt * 0.25)
@@ -110,6 +119,10 @@ func _animate(dt: float) -> void:
 				_spin.rotation.y += dt * 1.1
 			"tank":
 				_spin.rotation += Vector3(0.3, 0.6, 0.0) * dt
+			"seeker":
+				_spin.rotation += Vector3(2.0, 1.4, 0.8) * dt
+			"swarm":
+				_spin.rotation.z += dt * 9.0
 	if _orbit:
 		_orbit.rotation.z -= dt * 2.2
 	# Spawn: spiral in from nothing, then a gentle breathing pulse.
