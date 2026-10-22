@@ -217,6 +217,7 @@ func _process(delta: float) -> void:
 		combat.resolve(dt)
 	_sync_transforms(dt)
 	_draw_lines()
+	_charge_fx(dt)
 	projectiles.render()
 	geoms.render()
 	tunnel.update_view(player.s)
@@ -309,7 +310,9 @@ func _autoplay_input() -> Dictionary:
 	var x := clampf(Track.angle_diff(target, player.th) * 3.0, -1.0, 1.0)
 	if player.invert_x:
 		x = -x
-	return {"x": x, "y": 0.6, "fire": state != State.INTRO, "charge": false}
+	# Hold the charge for 0.8 s every 2 s so the harness exercises it.
+	var charging := state != State.INTRO and fmod(state_t, 2.0) < 0.8
+	return {"x": x, "y": 0.6, "fire": state != State.INTRO and not charging, "charge": charging}
 
 
 func enemies_may_fire() -> bool:
@@ -560,13 +563,60 @@ func fire_ring(s: float, h: float, count: int, gap_th: float, gap: int, rel_spee
 			fire_bullet(s, wrapf(a, -PI, PI), h, rel_speed, 0.0)
 
 
+const CHAIN_TARGETS := 6
+const CHAIN_RANGE := 70.0
+const CHAIN_DAMAGE := 6.0
+const AURA_TIME := 0.6
+
+var _aura_t := 0.0
+
+
 func _on_nova(s: float, th: float) -> void:
-	projectiles.add_shot(player.nova_shot(s, th))
+	for shot in player.spiral_shots(s, th):
+		projectiles.add_shot(shot)
 	var at := track.point(s, th, Player.H)
-	fx.sparks(at, Color(0.8, 1.0, 1.0), 40, 30.0, 1.6, 0.4)
-	fx.shockwave(at, Color(0.8, 1.0, 1.0), 5.0)
-	fx.shake = maxf(fx.shake, 0.25)
+	var ahead_at := track.point(s + 10.0, th, Player.H)
+	fx.sparks(ahead_at, Player.NOVA_COLOR, 36, 26.0, 1.2, 0.35)
+	fx.shockwave(ahead_at, Player.NOVA_COLOR, 3.0)
+	fx.shake = maxf(fx.shake, 0.3)
+	post.kick(0.4)
+	post.pulse(Player.NOVA_COLOR, 0.25)
+	_aura_t = AURA_TIME
+	_chain_lightning(at)
 	Sfx.play("nova")
+
+
+## Bolts jump from the ship to the nearest enemies ahead, damaging each.
+func _chain_lightning(from: Vector3) -> void:
+	var targets := enemies.filter(func(e: Enemy) -> bool:
+		var ahead := e.s - player.s
+		return e.alive and not e.invulnerable and not e.hidden and ahead > 0.0 and ahead < CHAIN_RANGE \
+			and absf(Track.angle_diff(e.th, player.th)) < 1.4)
+	targets.sort_custom(func(a: Enemy, b: Enemy) -> bool: return a.s < b.s)
+	var prev := from
+	for e: Enemy in targets.slice(0, CHAIN_TARGETS):
+		fx.lightning(prev, e.global_position, Color(0.75, 0.95, 1.0), 0.3, 0.1)
+		fx.sparks(e.global_position, Player.NOVA_COLOR, 10, 14.0, 0.8, 0.25)
+		combat.hit_enemy(e, CHAIN_DAMAGE)
+		prev = e.global_position
+	for b in bosses:
+		if b.core_hittable() and b.s - player.s < CHAIN_RANGE * 1.4:
+			fx.lightning(prev, b.global_position, Color(0.75, 0.95, 1.0), 0.3, 0.12)
+			if b.damage(CHAIN_DAMAGE * 1.5):
+				on_boss_killed(b)
+	enemies = enemies.filter(func(e: Enemy) -> bool: return e.alive)
+
+
+## Crackle while charging and an electric halo right after the release.
+func _charge_fx(dt: float) -> void:
+	_aura_t = maxf(0.0, _aura_t - dt)
+	if not player.alive:
+		return
+	var nose := player.global_position - player.global_basis.z * 1.5
+	if player.charge > 0.35 and randf() < player.charge * 0.6:
+		fx.zap(nose, 0.6 + player.charge * 1.2, Player.NOVA_COLOR, 1)
+	if _aura_t > 0.0:
+		fx.zap(player.global_position, 2.2, Color(0.8, 0.95, 1.0), 1)
 
 
 func _on_geom(pos: Vector3) -> void:

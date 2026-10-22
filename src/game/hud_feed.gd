@@ -15,7 +15,7 @@ static func powers(g: Game) -> Array:
 	var rows: Array = [
 		{"icon": "pickup_bomb", "name": "Bomba", "key": "ESPAÇO", "color": bomb_color,
 			"count": p.specials, "max": Player.MAX_SPECIALS, "ready": p.specials > 0},
-		{"icon": "charge", "name": "Tiro carregado", "key": "BOTÃO DIR.", "color": Color(0.75, 1.0, 1.0),
+		{"icon": "charge", "name": "Espiral elétrica", "key": "BOTÃO DIR.", "color": Color(0.75, 1.0, 1.0),
 			"ratio": p.charge, "ready": p.charge >= 1.0, "label": "PRONTO!" if p.charge >= 1.0 else ""},
 	]
 	var timed := [["shield", p.shield_t, 10.0], ["rapid", p.rapid_t, 9.0], ["missile", pu.missile_t, PowerUps.MISSILE_TIME],

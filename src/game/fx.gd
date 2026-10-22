@@ -115,6 +115,79 @@ func popup(pos: Vector3, text: String, color: Color) -> void:
 	tween.tween_callback(label.queue_free)
 
 
+## Particles pulled into a point (charge-up at the ship's nose).
+static func make_suction(color: Color) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	var mat := ParticleProcessMaterial.new()
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE_SURFACE
+	mat.emission_sphere_radius = 1.8
+	mat.radial_accel_min = -55.0
+	mat.radial_accel_max = -40.0
+	mat.gravity = Vector3.ZERO
+	mat.scale_min = 0.12
+	mat.scale_max = 0.25
+	var grow := Curve.new()
+	grow.add_point(Vector2(0.0, 0.3))
+	grow.add_point(Vector2(1.0, 1.0))
+	var grow_tex := CurveTexture.new()
+	grow_tex.curve = grow
+	mat.scale_curve = grow_tex
+	var g := Gradient.new()
+	g.colors = PackedColorArray([Color(color, 0.0), color, Color(1, 1, 1, 1)])
+	g.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+	var ramp := GradientTexture1D.new()
+	ramp.gradient = g
+	mat.color_ramp = ramp
+	p.process_material = mat
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE
+	p.draw_pass_1 = quad
+	p.material_override = Meshes.additive(2.6, 0.6)
+	p.amount = 40
+	p.lifetime = 0.28
+	p.local_coords = true
+	p.emitting = false
+	return p
+
+
+## Jagged electric bolt between two points that flickers out.
+func lightning(a: Vector3, b: Vector3, color: Color, life := 0.22, width := 0.08) -> void:
+	var segs: Array = []
+	var steps := clampi(int(a.distance_to(b) / 1.6), 4, 18)
+	var dir := (b - a)
+	var side := dir.cross(Vector3.UP).normalized()
+	if side.length_squared() < 0.01:
+		side = Vector3.RIGHT
+	var up := side.cross(dir).normalized()
+	var jag := minf(dir.length() * 0.08, 1.2)
+	var prev := a
+	for i in range(1, steps + 1):
+		var t := float(i) / steps
+		var p := a + dir * t
+		if i < steps:
+			p += side * randf_range(-jag, jag) + up * randf_range(-jag, jag)
+		segs.append([prev, p])
+		if i < steps and randf() < 0.25:
+			var fork := p + (side * randf_range(-1, 1) + up * randf_range(-1, 1)) * jag * 1.5
+			segs.append([p, fork])
+		prev = p
+	var mi := MeshInstance3D.new()
+	mi.mesh = NeonGeo.edge_mesh_from_segments(segs)
+	mi.material_override = NeonGeo.edge_material(color, 3.2, width)
+	mi.custom_aabb = AABB(Vector3.ONE * -1e5, Vector3.ONE * 2e5)
+	add_child(mi)
+	var tween := mi.create_tween()
+	tween.tween_method(func(v: float) -> void: mi.set_instance_shader_parameter("fade", v), 1.0, 0.0, life)
+	tween.tween_callback(mi.queue_free)
+
+
+## Short bolts crackling out of a point in random directions.
+func zap(center: Vector3, radius: float, color: Color, count := 2) -> void:
+	for i in count:
+		var dir := Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)).normalized()
+		lightning(center, center + dir * radius * randf_range(0.5, 1.0), color, 0.1, 0.04)
+
+
 ## Speed streaks flying past the camera (attach to the camera; local space).
 static func make_warp() -> GPUParticles3D:
 	var p := GPUParticles3D.new()

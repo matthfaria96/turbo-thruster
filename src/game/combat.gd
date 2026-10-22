@@ -38,7 +38,7 @@ func resolve(dt: float) -> void:
 
 
 func nova_active() -> bool:
-	return g.projectiles.shots.any(func(s: Dictionary) -> bool: return s.pierce)
+	return g.projectiles.shots.any(func(s: Dictionary) -> bool: return s.pierce or s.get("clears", false))
 
 
 # ------------------------------------------------------------- player shots
@@ -124,9 +124,10 @@ static func _segment_hits(a: Vector3, b: Vector3, c: Vector3, r: float) -> bool:
 
 
 func _nova_clears_bullets() -> void:
-	for nova: Dictionary in g.projectiles.shots.filter(func(s: Dictionary) -> bool: return s.pierce):
+	for nova: Dictionary in g.projectiles.shots.filter(func(s: Dictionary) -> bool: return s.pierce or s.get("clears", false)):
+		var reach := 0.45 if nova.pierce else 0.3
 		var removed := g.projectiles.clear_bullets(func(b: Dictionary) -> bool:
-			return absf(b.s - nova.s) < 6.0 and absf(Track.angle_diff(b.th, nova.th)) < 0.45)
+			return absf(b.s - nova.s) < 6.0 and absf(Track.angle_diff(b.th, nova.th)) < reach)
 		g.score += 10 * removed.size()
 		_spark_bullets(removed)
 

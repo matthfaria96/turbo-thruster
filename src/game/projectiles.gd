@@ -41,7 +41,12 @@ func update(dt: float, time_scale: float, player_s: float, player_speed := 0.0) 
 	for shot in shots:
 		shot.ps = shot.s
 		shot.s += shot.vs * dt
-		shot.th = wrapf(shot.th + shot.vth * dt, -PI, PI)
+		if shot.has("swing"):
+			# Helix: each bolt orbits its lane, the two arms crossing over.
+			shot.age += dt
+			shot.th = wrapf(shot.base_th + sin(shot.age * 9.0 + shot.swing) * 0.35 + shot.vth * shot.age * 0.25, -PI, PI)
+		else:
+			shot.th = wrapf(shot.th + shot.vth * dt, -PI, PI)
 		shot.life -= dt
 	for b in bullets:
 		# Bullets keep their absolute speed in slow motion: scale the
@@ -71,7 +76,7 @@ func render() -> void:
 		var shot: Dictionary = shots[i]
 		var fr := track.frame(shot.s)
 		var pos: Vector3 = fr.origin + Track.radial(fr, shot.th) * (Track.RADIUS - shot.h)
-		var length: float = 6.0 if shot.pierce else 2.8
+		var length: float = 6.0 if shot.pierce else (3.6 if shot.has("swing") else 2.8)
 		var basis := Basis(fr.basis.x * shot.size * 0.55, -fr.basis.z * length, fr.basis.y)
 		_shot_mm.set_instance_transform(i, Transform3D(basis, pos))
 		_shot_mm.set_instance_color(i, Color(0.75, 1.0, 1.0) if shot.pierce else shot.get("color", EnemyTypes.SHOT_COLOR))

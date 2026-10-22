@@ -119,13 +119,15 @@ macOS e Linux**.
 | Ir para os lados | A / D | analógico / D-pad |
 | Acelerar (frente) / frear (trás) | W / S | analógico |
 | Atirar (segurar) | botão esquerdo do mouse | A / RT |
-| Tiro carregado (segure e solte) | botão direito do mouse | X / LT |
+| Espiral elétrica (segure ~0,5 s e solte) | botão direito do mouse | X / LT |
 | Especial: bomba (até 4 em estoque) | Espaço | Y / B |
 | Pausar | Esc / P | Start |
 | Tela cheia | F11 | — |
 
-Acelerar rende mais pontos. Frear deixa as balas inimigas mais lentas. O tiro
-carregado atravessa os inimigos e apaga as balas no caminho.
+Acelerar rende mais pontos. Frear deixa as balas inimigas mais lentas. A espiral
+elétrica carrega uma esfera de energia na ponta da nave; ao soltar, dispara uma
+hélice de 12 raios bem mais larga que o tiro normal, que apaga balas inimigas,
+e lança raios em cadeia em até 6 inimigos próximos.
 
 ## Configurações
 
