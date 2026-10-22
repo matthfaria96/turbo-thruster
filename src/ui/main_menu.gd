@@ -8,8 +8,12 @@ func _init(p_main: Node) -> void:
 	col.add_child(UiStyle.title("TURBO THRUSTER", 84))
 	col.add_child(UiStyle.label("Corrida arcade neon dentro do túnel", 22, UiStyle.DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	col.add_child(spacer(36))
-	var play := UiStyle.button("Jogar", main.show_level_select)
-	for b in [play,
+	var play := UiStyle.button("Campanha", main.show_level_select)
+	var arcade := UiStyle.button("Modo Arcade  ·  em breve", func() -> void: pass)
+	arcade.disabled = true
+	arcade.focus_mode = Control.FOCUS_NONE
+	arcade.tooltip_text = "Sobreviva o máximo que puder. Disponível em breve."
+	for b in [play, arcade,
 			UiStyle.button("Configurações", main.show_settings),
 			UiStyle.button("Controles", main.show_controls),
 			UiStyle.button("Sair", main.quit)]:

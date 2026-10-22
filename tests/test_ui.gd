@@ -11,12 +11,12 @@ func _initialize() -> void:
 	await process_frame
 	await process_frame
 	var first := root.gui_get_focus_owner()
-	_check(first is Button and (first as Button).text == "Jogar", "menu focuses Jogar")
+	_check(first is Button and (first as Button).text == "Campanha", "menu focuses Campanha")
 	await _press(KEY_S)
 	var second := root.gui_get_focus_owner()
 	_check(second is Button and (second as Button).text == "Configurações", "S moves focus down")
 	await _press(KEY_W)
-	_check((root.gui_get_focus_owner() as Button).text == "Jogar", "W moves focus up")
+	_check((root.gui_get_focus_owner() as Button).text == "Campanha", "W moves focus up")
 	await _press(KEY_ENTER)
 	await process_frame
 	var card := root.gui_get_focus_owner()
@@ -29,7 +29,7 @@ func _initialize() -> void:
 	_check(root.gui_get_focus_owner() == below, "A then D returns to the same card")
 	await _press(KEY_ESCAPE)
 	await process_frame
-	_check((root.gui_get_focus_owner() as Button).text == "Jogar", "Esc returns to menu")
+	_check((root.gui_get_focus_owner() as Button).text == "Campanha", "Esc returns to menu")
 	print("ui checks done, failures: %d" % _fail)
 	quit(1 if _fail > 0 else 0)
 
