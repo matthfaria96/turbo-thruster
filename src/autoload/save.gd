@@ -4,7 +4,7 @@ extends Node
 signal settings_changed
 
 const SAVE_PATH := "user://turbo_thruster.json"
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
 const MIN_WINDOW := Vector2i(960, 540)
 const WINDOW_SIZES: Array[Vector2i] = [
 	Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440),
@@ -140,6 +140,9 @@ func load_data() -> void:
 	var loaded: Dictionary = raw_settings if typeof(raw_settings) == TYPE_DICTIONARY else {}
 	for key: String in DEFAULT_SETTINGS:
 		settings[key] = _coerce(loaded.get(key), DEFAULT_SETTINGS[key])
+	# v3 added the Hyperdrive audio style and made it the default.
+	if _num(data.get("version", 1), 1) < 3:
+		settings.audio_style = 0
 	if _num(data.get("version", 1), 1) < 2:
 		settings.autofire = false
 	unlocked = clampi(_num(data.get("unlocked", 1), 1), 1, Levels.count())

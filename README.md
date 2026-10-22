@@ -91,9 +91,13 @@ macOS e Linux**.
   e cronômetro, ato atual com barra de progresso, velocímetro com o anel do
   tiro carregado, medidores circulares de casco e arma, retícula de mira e
   alerta de obstáculo à frente. O painel balança junto com a nave.
-- **Trilha sonora própria**, toda sintetizada (sem vocais e sem samples), em
-  dois estilos escolhidos em Configurações → *Estilo de som*:
-  - **Metal** (padrão): metal industrial/punk no estilo DOOM moderno, de 100 a
+- **Trilha sonora própria**, toda sintetizada (sem vocais reais e sem samples),
+  em três estilos escolhidos em Configurações → *Estilo de som*:
+  - **Hyperdrive** (padrão): festa hardcore, de 128 a 200 BPM (hard trance,
+    hardstyle, happy hardcore, rawstyle, gabber, uptempo e frenchcore), com
+    supersaws, kicks afinados, builds e drops. Para gerar de novo:
+    `tools/music/synth_hyper.py` e `tools/music/sfx_hyper.py`.
+  - **Metal**: metal industrial/punk no estilo DOOM moderno, de 100 a
     180 BPM, com efeitos sonoros pesados. Para gerar de novo:
     `tools/music/synth_metal.py` e `tools/music/sfx_metal.py`.
   - **Clássico**: a trilha eletrônica pump/techno (`tools/music/synth.py`) e os

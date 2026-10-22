@@ -21,7 +21,7 @@ func _init(p_main: Node) -> void:
 	_add_row(list, "Tamanho da janela", "window_size",
 		Save.WINDOW_SIZES.map(func(v: Vector2i) -> String: return "%d × %d" % [v.x, v.y]))
 	_add_row(list, "VSync", "vsync", [false, true])
-	_add_row(list, "Estilo de som", "audio_style", ["Metal", "Clássico"])
+	_add_row(list, "Estilo de som", "audio_style", Sfx.STYLE_NAMES)
 	_add_row(list, "Música", "music", PERCENT_STEPS)
 	_add_row(list, "Efeitos sonoros", "sfx", PERCENT_STEPS)
 	_add_row(list, "Brilho (bloom)", "glow", PERCENT_STEPS)

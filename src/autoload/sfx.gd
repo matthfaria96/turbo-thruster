@@ -1,17 +1,21 @@
 extends Node
 ## Sound effects pool + music player.
 
-## Two audio styles chosen in Settings ("audio_style"):
-##   0 = Metal (default): tools/music/synth_metal.py + sfx_metal.py
-##   1 = Classical: the first synthesized techno set + original Torus Trooper SFX
-const STYLES := ["metal", "classical"]
+## Audio styles chosen in Settings ("audio_style"):
+##   0 = Hyperdrive (default): rave hardcore, tools/music/synth_hyper.py + sfx_hyper.py
+##   1 = Metal: tools/music/synth_metal.py + sfx_metal.py
+##   2 = Classical: the first synthesized techno set + original Torus Trooper SFX
+const STYLES := ["hyper", "metal", "classical"]
+const STYLE_NAMES := ["Hyperdrive", "Metal", "Clássico"]
 const SFX_FILES := {
 	"shot": "shot", "charge": "charge", "nova": "charge_shot", "hit": "hit",
 	"small": "small_dest", "middle": "middle_dest", "boss": "boss_dest", "ship": "myship_dest",
 	"pickup": "extend", "alert": "timeup_beep", "ui_move": "ui_move", "ui_confirm": "ui_confirm",
 }
-const SFX_DIRS := {"metal": "res://assets/sfx_metal/", "classical": "res://assets/sounds/chunks/"}
-const MUSIC_DIRS := {"metal": "res://assets/music_metal/", "classical": "res://assets/music/"}
+const SFX_DIRS := {"hyper": "res://assets/sfx_hyper/", "metal": "res://assets/sfx_metal/",
+	"classical": "res://assets/sounds/chunks/"}
+const MUSIC_DIRS := {"hyper": "res://assets/music_hyper/", "metal": "res://assets/music_metal/",
+	"classical": "res://assets/music/"}
 ## Classical has no dedicated UI sounds: reuse gentle ones.
 const CLASSICAL_UI := {"ui_move": ["shot", 1.6, -14.0], "ui_confirm": ["pickup", 1.4, -10.0]}
 const TRACKS := ["menu", "sector_a", "sector_b", "sector_c", "sector_d", "sector_e", "boss"]
