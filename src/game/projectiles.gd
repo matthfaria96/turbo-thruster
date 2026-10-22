@@ -13,12 +13,15 @@ var shots: Array[Dictionary] = []
 var bullets: Array[Dictionary] = []
 var _shot_mm: MultiMesh
 var _bullet_mm: MultiMesh
+var _tail_mm: MultiMesh
+var _player_speed := 0.0
 
 
 func setup(p_track: Track) -> void:
 	track = p_track
 	_shot_mm = _make_multimesh(MAX_SHOTS, Meshes.streak(3.2, 0.75))
 	_bullet_mm = _make_multimesh(MAX_BULLETS, Meshes.additive(3.0, 0.35, 0.9))
+	_tail_mm = _make_multimesh(MAX_BULLETS, Meshes.streak(1.6, 0.2))
 
 
 func add_shot(shot: Dictionary) -> void:
@@ -34,6 +37,7 @@ func add_bullet(s: float, th: float, h: float, vs: float, vth: float) -> void:
 ## Shots move in real time; enemy bullets in world time (slow motion).
 func update(dt: float, time_scale: float, player_s: float, player_speed := 0.0) -> void:
 	var world_dt := dt * time_scale
+	_player_speed = player_speed
 	for shot in shots:
 		shot.ps = shot.s
 		shot.s += shot.vs * dt
@@ -78,6 +82,12 @@ func render() -> void:
 		_bullet_mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ONE * BULLET_SIZE * pulse),
 			track.point(b.s, b.th, b.h)))
 		_bullet_mm.set_instance_color(i, EnemyTypes.BULLET_COLOR)
+		# Short glowing tail pointing back along the bullet's path.
+		var head := track.point(b.s, b.th, b.h)
+		var back := track.point(b.s - signf(b.vs - _player_speed) * 2.2, b.th - b.vth * 0.12, b.h)
+		_tail_mm.set_instance_transform(i, Transform3D(Basis(Vector3.RIGHT * 0.5, back - head, Vector3.UP), head))
+		_tail_mm.set_instance_color(i, Color(EnemyTypes.BULLET_COLOR, 0.7))
+	_tail_mm.visible_instance_count = bullets.size()
 
 
 func _make_multimesh(count: int, mat: Material) -> MultiMesh:

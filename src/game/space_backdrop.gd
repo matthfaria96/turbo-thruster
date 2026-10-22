@@ -38,10 +38,10 @@ func _make_bokeh(rng: RandomNumberGenerator, tint: Color) -> MultiMeshInstance3D
 	var palette := [tint, Color(0.2, 0.9, 0.8), Color(0.6, 0.3, 1.0), Color(1.0, 0.4, 0.7)]
 	for i in BOKEH_COUNT:
 		var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(-1, 1), rng.randf_range(-1, 1)).normalized()
-		var size := rng.randf_range(18.0, 55.0)
+		var size := rng.randf_range(18.0, 50.0)
 		mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ONE * size), dir * DISTANCE))
 		var c: Color = palette[i % palette.size()]
-		mm.set_instance_color(i, Color(c, rng.randf_range(0.05, 0.14)))
+		mm.set_instance_color(i, Color(c, rng.randf_range(0.05, 0.13)))
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
 	var mat := Meshes.additive(0.5, 0.0).duplicate() as ShaderMaterial
@@ -66,7 +66,7 @@ func _make_plexus(rng: RandomNumberGenerator, tint: Color) -> Node3D:
 	var mesh := NeonGeo.edge_mesh_from_segments(segments)
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
-	var mat := NeonGeo.edge_material(tint.lightened(0.2), 0.16, 0.45).duplicate() as ShaderMaterial
+	var mat := NeonGeo.edge_material(tint.lightened(0.3), 0.26, 0.45).duplicate() as ShaderMaterial
 	mat.render_priority = -20
 	mi.material_override = mat
 	mi.custom_aabb = AABB(Vector3.ONE * -400.0, Vector3.ONE * 800.0)

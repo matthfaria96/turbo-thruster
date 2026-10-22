@@ -32,6 +32,21 @@ static func _named(name: String, child: Node3D) -> Node3D:
 	return child
 
 
+## Soft additive billboard glow behind an object (its "aura").
+static func aura(color: Color, size: float, energy := 0.9) -> MeshInstance3D:
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE * size
+	var mi := MeshInstance3D.new()
+	mi.name = "Aura"
+	mi.mesh = quad
+	var mat := additive(energy, 0.0).duplicate() as ShaderMaterial
+	mat.render_priority = -2
+	mi.material_override = mat
+	mi.set_instance_shader_parameter("tint", color)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
 ## Player: white-cyan claw, nose toward -Z.
 static func ship() -> Node3D:
 	var root := Node3D.new()
@@ -43,6 +58,16 @@ static func ship() -> Node3D:
 	var cockpit := NeonGeo.build("ship_core", NeonGeo.octa(0.22, 1.6), Color(1, 1, 1), 2.0, 0.25, 0.05)
 	cockpit.position = Vector3(0, 0.22, -0.15)
 	root.add_child(cockpit)
+	for side in [-1.0, 1.0]:
+		var flare := aura(Color(0.5, 0.9, 1.0), 0.7, 0.9)
+		flare.name = "FlareL" if side < 0.0 else "FlareR"
+		flare.position = Vector3(side * 0.55, -0.05, 0.75)
+		root.add_child(flare)
+	var muzzle := aura(Color(1.0, 0.9, 0.5), 0.8, 1.1)
+	muzzle.name = "Muzzle"
+	muzzle.position = Vector3(0, 0.1, -1.4)
+	muzzle.visible = false
+	root.add_child(muzzle)
 	root.scale = Vector3.ONE * 0.95
 	return root
 
@@ -132,6 +157,8 @@ static func enemy(kind: String) -> Node3D:
 				shard.position = Vector3(cos(a), sin(a), 0) * 2.2
 				orbit.add_child(shard)
 			root.add_child(orbit)
+	if kind not in ["barrier", "rotor", "pulse_ring", "serpent_body"]:
+		root.add_child(aura(color, 2.2 * (1.6 if kind == "tank" else 1.0), 0.3))
 	return root
 
 

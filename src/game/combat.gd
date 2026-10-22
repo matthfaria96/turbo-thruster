@@ -84,6 +84,9 @@ func _shot_vs_bosses(shot: Dictionary) -> void:
 					shot[part_key] = true
 				if b.damage_part(i, shot.dmg):
 					g.fx.explosion(b.part_position(i), b.color, 1.6)
+					g.post.kick(0.5)
+					g.post.pulse(b.color, 0.5)
+					g.hitstop_t = 0.1
 					g.score += 800 * g.multiplier
 					Sfx.play("middle", -2.0)
 					g.hud.announce("", "PARTE DESTRUÍDA", 0.8, UiStyle.GOLD)
@@ -170,6 +173,7 @@ func _graze(b: Dictionary) -> void:
 	g.grazes += 1
 	g.score += 50 * g.multiplier
 	g.fx.sparks(g.track.point(b.s, b.th, b.h), Color(1, 1, 1), 5, 12.0, 0.5, 0.2)
+	g.post.pulse(Color(1, 1, 1), 0.12)
 	Sfx.play("shot", -12.0, 2.6)
 	if g.grazes % GRAZES_PER_MULT == 0:
 		g.multiplier = mini(Game.MAX_MULTIPLIER, g.multiplier + 1)
@@ -222,6 +226,9 @@ func hurt_player(source: Vector3) -> void:
 	g.hits_taken += 1
 	g.fx.explosion(p.global_position, EnemyTypes.PLAYER_COLOR, 0.8)
 	g.fx.shake = 0.7
+	g.post.kick(0.8)
+	g.post.pulse(UiStyle.DANGER, 0.7)
+	g.hitstop_t = 0.09
 	var side := signf((source - p.global_position).dot(g.camera.global_transform.basis.x))
 	g.hud.damage_pulse(side)
 	g.multiplier = maxi(1, g.multiplier / 2)
@@ -247,6 +254,10 @@ func on_enemy_killed(e: Enemy) -> void:
 	g.score += points
 	var big := e.kind in ["tank", "serpent", "warden"]
 	g.fx.explosion(e.global_position, e.spec.color, 1.8 if big else 1.0)
+	g.post.pulse(e.spec.color, 0.45 if big else 0.18)
+	if big:
+		g.post.kick(0.35)
+		g.hitstop_t = 0.06
 	if points > 0:
 		g.fx.popup(e.global_position + Vector3.UP * 0.5, "+%d" % points, e.spec.color)
 	Sfx.play("middle" if big else "small", -3.0, randf_range(0.9, 1.1))

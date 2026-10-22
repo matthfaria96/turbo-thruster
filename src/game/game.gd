@@ -50,6 +50,9 @@ var pickups: Array[Pickup] = []
 var geoms: Geoms
 var backdrop: SpaceBackdrop
 var director: ActDirector
+var post: PostFx
+var _warp: GPUParticles3D
+var hitstop_t := 0.0
 var combat: Combat
 var powerups: PowerUps
 var run_end: RunEnd
@@ -129,6 +132,8 @@ func _build_world() -> void:
 	fx = Fx.new()
 	add_child(fx)
 	fx.ripple.connect(tunnel.add_ripple)
+	post = PostFx.new()
+	add_child(post)
 	lines = TrackLines.new()
 	add_child(lines)
 	lines.setup(track)
@@ -149,6 +154,8 @@ func _build_world() -> void:
 	camera.far = 420.0
 	add_child(camera)
 	camera.current = true
+	_warp = Fx.make_warp()
+	camera.add_child(_warp)
 
 
 func _spawn_gallery() -> void:
@@ -175,13 +182,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause") and state in ACTIVE_STATES and not get_tree().paused:
 		get_viewport().set_input_as_handled()
 		_pause()
+	elif event.is_action_pressed("special") and state in [State.PLAY, State.BOSS] and not get_tree().paused:
+		get_viewport().set_input_as_handled()
+		powerups.use_special()
 
 
 func _process(delta: float) -> void:
 	var dt := minf(delta, 1.0 / 30.0)
 	var playing := state in ACTIVE_STATES and not get_tree().paused
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if playing else Input.MOUSE_MODE_VISIBLE
-	var world_dt := dt * time_scale
+	hitstop_t = maxf(0.0, hitstop_t - dt)
+	var world_dt := dt * time_scale * (0.12 if hitstop_t > 0.0 else 1.0)
 	slow_carry = dt - world_dt
 	state_t += dt
 	_step_state(dt)
@@ -204,6 +215,11 @@ func _process(delta: float) -> void:
 	projectiles.render()
 	geoms.render()
 	tunnel.update_view(player.s)
+	var speed_k := clampf((player.speed - Player.BASE_SPEED) / (Player.MAX_SPEED - Player.BASE_SPEED + 14.0), 0.0, 1.0)
+	tunnel.set_flow(0.25 + speed_k * 0.75, player.s)
+	post.set_speed(speed_k)
+	_warp.amount_ratio = clampf(0.15 + speed_k * 0.85, 0.0, 1.0)
+	_warp.speed_scale = 0.6 + speed_k * 1.2
 	backdrop.follow(camera, dt)
 	hud.refresh(_hud_state(), dt)
 
@@ -216,7 +232,7 @@ func _hud_state() -> Dictionary:
 		"act": director.index, "acts": director.count, "act_title": director.title,
 		"reticle": _reticle_screen_pos(), "bank": player.bank_amount(), "hazard": _hazard_ahead(),
 		"elapsed": elapsed, "arcade": is_arcade(), "boss_ratio": boss_ratio(),
-		"slow": time_scale < 0.99, "power": powerups.active_label()}
+		"slow": time_scale < 0.99, "power": powerups.active_label(), "specials": player.specials}
 
 
 # --------------------------------------------------------------- state flow
@@ -436,7 +452,7 @@ func _draw_lines() -> void:
 		var wall: Color = (level.tint as Color).lightened(0.35)
 		for side in [-1.0, 1.0]:
 			var a: float = player.lane_center + side * (player.lane_half + 0.08)
-			lines.line("lane", wall, player.s + 4.0, player.s + 170.0, a, 0.05, 0.12, 1.5)
+			lines.line("lane", wall, player.s + 4.0, player.s + 170.0, a, 0.05, 0.08, 1.0)
 	for e in enemies:
 		if e.kind == "laser" and e.beam_state > 0:
 			var firing := e.beam_state == 2

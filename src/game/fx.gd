@@ -4,7 +4,7 @@ extends Node3D
 ## shockwave rings, floating score text and camera shake. Explosions also
 ## ask the tunnel to ripple (see `ripple`).
 
-signal ripple(pos: Vector3, strength: float)
+signal ripple(pos: Vector3, strength: float, color: Color)
 
 const SHOCK_TIME := 0.45
 
@@ -68,15 +68,29 @@ func shockwave(pos: Vector3, color: Color, size := 4.0) -> void:
 	_shocks.append({"node": node, "t": 0.0, "size": size, "geo": Meshes.geometry_of(node)})
 
 
+## Big, layered burst: fast sparks, a white core flash, slow lingering
+## embers in the enemy colour plus a complementary accent, spinning shards,
+## a shockwave ring and a coloured grid ripple.
 func explosion(pos: Vector3, color: Color, scale_k := 1.0) -> void:
 	var root_k := sqrt(scale_k)
-	sparks(pos, color, int(30 * scale_k), 24.0 * root_k, 1.3 * sqrt(root_k), 0.5)
-	sparks(pos, Color(1, 1, 1), int(8 * scale_k), 16.0 * root_k, 0.8, 0.25)
-	shards(pos, color, int(5 * scale_k), 9.0 * root_k)
-	glow(pos, color, 2, 2.0 * root_k, 0.25)
-	shockwave(pos, color, minf(3.0 * root_k, 7.0))
-	ripple.emit(pos, clampf(0.5 * scale_k, 0.3, 2.5))
+	var accent := Color.from_hsv(fmod(color.h + 0.5, 1.0), 0.8, 1.0)
+	sparks(pos, color, int(44 * scale_k), 26.0 * root_k, 1.4 * sqrt(root_k), 0.55)
+	sparks(pos, Color(1, 1, 1), int(12 * scale_k), 18.0 * root_k, 0.9, 0.28)
+	sparks(pos, accent, int(14 * scale_k), 14.0 * root_k, 0.7, 0.45)
+	embers(pos, color, int(26 * scale_k), 5.0 * root_k)
+	shards(pos, color, int(7 * scale_k), 9.0 * root_k)
+	shards(pos, accent, int(3 * scale_k), 6.0 * root_k)
+	glow(pos, Color(1, 1, 1), 1, 3.2 * root_k, 0.12)
+	glow(pos, color, 3, 2.4 * root_k, 0.3)
+	shockwave(pos, color, minf(3.2 * root_k, 7.0))
+	ripple.emit(pos, clampf(0.55 * scale_k, 0.3, 2.5), color)
 	shake = maxf(shake, 0.1 * scale_k)
+
+
+## Slow glowing motes that hang in the air after a kill (Geometry Wars dust).
+func embers(pos: Vector3, color: Color, amount := 20, speed := 5.0) -> void:
+	var mat := _process_material("ember", color, speed, 0.22, false)
+	_emit(pos, amount, 1.6, mat, _glow_mesh, Meshes.additive(2.6, 0.5))
 
 
 func popup(pos: Vector3, text: String, color: Color) -> void:
@@ -99,6 +113,36 @@ func popup(pos: Vector3, text: String, color: Color) -> void:
 	tween.tween_property(label, "scale", Vector3.ONE * 1.2, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(label, "modulate:a", 0.0, 0.6).set_delay(0.25)
 	tween.tween_callback(label.queue_free)
+
+
+## Speed streaks flying past the camera (attach to the camera; local space).
+static func make_warp() -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	var mat := ParticleProcessMaterial.new()
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	mat.emission_box_extents = Vector3(10.0, 7.0, 12.0)
+	mat.emission_ring_axis = Vector3.FORWARD
+	mat.direction = Vector3(0, 0, 1)
+	mat.spread = 0.0
+	mat.initial_velocity_min = 55.0
+	mat.initial_velocity_max = 90.0
+	mat.gravity = Vector3.ZERO
+	mat.scale_min = 1.2
+	mat.scale_max = 2.6
+	mat.particle_flag_align_y = true
+	mat.scale_curve = _fade_curve_texture()
+	mat.color_ramp = _ramp_texture(Color(0.55, 0.85, 1.0, 0.55))
+	p.process_material = mat
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.03, 1.0)
+	p.draw_pass_1 = quad
+	p.material_override = Meshes.streak(1.1, 0.3)
+	p.amount = 80
+	p.lifetime = 0.7
+	p.local_coords = true
+	p.position = Vector3(0, 0, -36.0)
+	p.visibility_aabb = AABB(Vector3(-40, -40, -60), Vector3(80, 80, 120))
+	return p
 
 
 ## Continuous trail for ships/enemies (world-space particles).
@@ -162,6 +206,14 @@ func _process_material(kind: String, color: Color, speed: float, size: float, al
 	mat.scale_curve = _fade_curve_texture()
 	mat.color_ramp = _ramp_texture(color)
 	mat.particle_flag_align_y = align
+	if kind == "ember":
+		mat.damping_min = speed * 0.3
+		mat.damping_max = speed * 0.6
+		mat.turbulence_enabled = true
+		mat.turbulence_noise_strength = 1.4
+		mat.turbulence_noise_scale = 3.0
+		mat.turbulence_influence_min = 0.05
+		mat.turbulence_influence_max = 0.12
 	if kind == "shard":
 		mat.particle_flag_rotate_y = true
 		mat.angular_velocity_min = -540.0

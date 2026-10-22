@@ -48,12 +48,19 @@ var _bank := 0.0
 var _fire_cd := 0.0
 var _charge_sound := false
 var _model: Node3D
+var _flares: Array[Node3D] = []
+var _muzzle: Node3D
+var _muzzle_t := 0.0
+var specials := 2
+const MAX_SPECIALS := 4
 var _shield: Node3D
 
 
 func _ready() -> void:
 	_model = Meshes.ship()
 	add_child(_model)
+	_flares = [_model.get_node("FlareL"), _model.get_node("FlareR")]
+	_muzzle = _model.get_node("Muzzle")
 	_shield = Meshes.shield_bubble()
 	_shield.visible = false
 	add_child(_shield)
@@ -86,9 +93,18 @@ func step(dt: float, input: Dictionary) -> Array[Dictionary]:
 	_bank = lerpf(_bank, -x * 0.55, minf(1.0, 10.0 * dt))
 	_model.rotation.z = _bank
 	_model.visible = invuln <= 0.0 or fmod(invuln, 0.16) > 0.07
+	var thrust := clampf((speed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0.0, 1.0)
+	var flicker := 0.85 + 0.15 * sin(Time.get_ticks_msec() * 0.05)
+	for f in _flares:
+		f.scale = Vector3.ONE * (0.45 + thrust * 0.7) * flicker
+	_muzzle_t = maxf(0.0, _muzzle_t - dt * 30.0)
+	_muzzle.visible = _muzzle_t > 0.0
+	_muzzle.scale = Vector3.ONE * (0.3 + _muzzle_t * 0.6) * (1.0 + weapon * 0.1)
+	_muzzle.rotation.z += dt * 20.0
 	if input.fire and _fire_cd <= 0.0:
 		_fire_cd = 1.0 / (FIRE_RATE[weapon] * (1.9 if rapid_t > 0.0 else 1.0))
 		shots = _make_shots()
+		_muzzle_t = 1.0
 		Sfx.play("shot", -16.0)
 	_update_charge(dt, input.charge)
 	return shots

@@ -75,7 +75,11 @@ func collect(p: Pickup) -> void:
 			player.rapid_t = 9.0
 			text = "RAJADA!"
 		"bomb":
-			_bomb()
+			if player.specials < Player.MAX_SPECIALS:
+				player.specials += 1
+				text = "BOMBA +1  (ESPAÇO)"
+			else:
+				_bonus(p, 3000)
 		"missile":
 			missile_t = MISSILE_TIME
 			text = "MÍSSEIS TELEGUIADOS"
@@ -200,9 +204,22 @@ func draw_laser() -> void:
 	game.lines.line("plaser_core", Color(1, 1, 1), p.s + 1.0, p.s + LASER_RANGE, p.th, Player.H, 0.14, 4.0)
 
 
+## Space: spend one stocked special.
+func use_special() -> bool:
+	var p := game.player
+	if p.specials <= 0 or not p.alive:
+		Sfx.play("hit", -8.0, 0.5)
+		return false
+	p.specials -= 1
+	_bomb()
+	return true
+
+
 ## Clears every bullet and heavily damages everything ahead.
 func _bomb() -> void:
 	game.hud.announce("BOMBA", "", 0.8, EnemyTypes.powerup("bomb").color)
+	game.post.kick(1.0)
+	game.post.pulse(EnemyTypes.powerup("bomb").color, 0.9)
 	Sfx.play("boss", -4.0, 1.3)
 	game.fx.shake = 0.8
 	var at := game.track.point(game.player.s + 6.0, game.player.th, 3.0)

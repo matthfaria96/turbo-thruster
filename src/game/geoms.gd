@@ -28,7 +28,7 @@ func setup(p_track: Track) -> void:
 	_mm.visible_instance_count = 0
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = _mm
-	mmi.material_override = NeonGeo.edge_material(EnemyTypes.GEOM_COLOR, 3.0, 0.05)
+	mmi.material_override = NeonGeo.edge_material(EnemyTypes.GEOM_COLOR, 3.6, 0.06)
 	mmi.custom_aabb = AABB(Vector3.ONE * -1e5, Vector3.ONE * 2e5)
 	add_child(mmi)
 

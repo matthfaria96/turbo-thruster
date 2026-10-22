@@ -43,6 +43,7 @@ func _draw() -> void:
 		float(state.shield) / 10.0, Color(0.4, 0.8, 1.0))
 	_draw_ring_gauge(Vector2(size.x / _k - 150, size.y / _k - 92), "ARMA", int(state.weapon),
 		Player.MAX_WEAPON, GREEN, float(state.rapid) / 9.0, Color(1.0, 0.6, 0.15))
+	_draw_specials()
 	_draw_reticle()
 	_draw_hazard()
 	_draw_power()
@@ -213,6 +214,19 @@ func _draw_ring_gauge(center: Vector2, label: String, value: int, maximum: int, 
 	_label(center + Vector2(0, 68), label, 13, DIM)
 
 
+func _draw_specials() -> void:
+	var count := int(state.get("specials", 0))
+	var center := Vector2(size.x / _k * 0.5, size.y / _k - 150)
+	var color := Color(1.0, 0.35, 0.9)
+	for i in Player.MAX_SPECIALS:
+		var x := center.x + (i - (Player.MAX_SPECIALS - 1) * 0.5) * 22.0
+		var c := color if i < count else Color(0.12, 0.16, 0.24, 0.9)
+		var pts := PackedVector2Array([_p(Vector2(x, center.y - 7)), _p(Vector2(x + 7, center.y)),
+			_p(Vector2(x, center.y + 7)), _p(Vector2(x - 7, center.y))])
+		draw_colored_polygon(pts, c)
+	_label(center + Vector2(0, 22), "ESPAÇO  BOMBA", 12, DIM if count == 0 else color)
+
+
 func _draw_reticle() -> void:
 	var pos: Vector2 = state.reticle
 	if pos.x < -500.0:
@@ -228,7 +242,7 @@ func _draw_reticle() -> void:
 func _draw_hazard() -> void:
 	if not state.hazard or fmod(_t, 0.4) > 0.26:
 		return
-	var center := Vector2(size.x / _k * 0.5, size.y / _k - 170)
+	var center := Vector2(size.x / _k * 0.5, size.y / _k - 205)
 	_label(center, "/!\\ OBSTÁCULO À FRENTE /!\\", 19, RED, HORIZONTAL_ALIGNMENT_CENTER, 600)
 
 
@@ -236,5 +250,5 @@ func _draw_power() -> void:
 	var text := String(state.get("power", ""))
 	if text == "":
 		return
-	var center := Vector2(size.x / _k * 0.5, size.y / _k - 132)
+	var center := Vector2(size.x / _k * 0.5, size.y / _k - 178)
 	_label(center, "[ " + text + "s ]", 17, GOLD if fmod(_t, 0.5) < 0.4 else WHITE)

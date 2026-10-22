@@ -7,8 +7,9 @@ const ACTIONS := {
 	"move_right": {"keys": [KEY_D, KEY_RIGHT], "buttons": [JOY_BUTTON_DPAD_RIGHT], "axes": [[JOY_AXIS_LEFT_X, 1.0]]},
 	"accelerate": {"keys": [KEY_W, KEY_UP], "buttons": [JOY_BUTTON_DPAD_UP], "axes": [[JOY_AXIS_LEFT_Y, -1.0]]},
 	"brake": {"keys": [KEY_S, KEY_DOWN], "buttons": [JOY_BUTTON_DPAD_DOWN], "axes": [[JOY_AXIS_LEFT_Y, 1.0]]},
-	"fire": {"keys": [KEY_SPACE, KEY_J], "mouse": [MOUSE_BUTTON_LEFT], "buttons": [JOY_BUTTON_A], "axes": [[JOY_AXIS_TRIGGER_RIGHT, 1.0]]},
+	"fire": {"keys": [KEY_J], "mouse": [MOUSE_BUTTON_LEFT], "buttons": [JOY_BUTTON_A], "axes": [[JOY_AXIS_TRIGGER_RIGHT, 1.0]]},
 	"charge": {"keys": [KEY_SHIFT, KEY_K], "mouse": [MOUSE_BUTTON_RIGHT], "buttons": [JOY_BUTTON_X], "axes": [[JOY_AXIS_TRIGGER_LEFT, 1.0]]},
+	"special": {"keys": [KEY_SPACE, KEY_Q], "buttons": [JOY_BUTTON_Y, JOY_BUTTON_B], "axes": []},
 	"pause": {"keys": [KEY_ESCAPE, KEY_P], "buttons": [JOY_BUTTON_START], "axes": []},
 }
 
@@ -19,6 +20,7 @@ const HELP := [
 	["Frear (trás)", "S", "Analógico para baixo"],
 	["Atirar (segurar)", "Botão esquerdo do mouse", "A / RT"],
 	["Tiro carregado (segurar e soltar)", "Botão direito do mouse", "X / LT"],
+	["Especial: bomba (limpa a tela)", "Espaço", "Y / B"],
 	["Pausar", "Esc / P", "Start"],
 	["Tela cheia", "F11", "—"],
 ]

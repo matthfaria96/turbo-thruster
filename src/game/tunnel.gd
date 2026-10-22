@@ -17,6 +17,7 @@ var material: ShaderMaterial
 var _chunks: Dictionary = {}
 var _now := 0.0
 var _ripples := PackedVector4Array()
+var _ripple_colors := PackedColorArray()
 var _ripple_strength := PackedFloat32Array()
 var _next_ripple := 0
 
@@ -28,6 +29,7 @@ func setup(p_track: Track, tint: Color) -> void:
 	material.set_shader_parameter("tint", tint)
 	material.render_priority = -10
 	_ripples.resize(MAX_RIPPLES)
+	_ripple_colors.resize(MAX_RIPPLES)
 	_ripple_strength.resize(MAX_RIPPLES)
 	for i in MAX_RIPPLES:
 		_ripples[i] = Vector4(0, 0, 0, -100.0)
@@ -40,8 +42,9 @@ func _process(delta: float) -> void:
 
 
 ## Grid shock ripple (Geometry Wars style) centred at a world position.
-func add_ripple(pos: Vector3, strength: float) -> void:
+func add_ripple(pos: Vector3, strength: float, color := Color(1, 1, 1)) -> void:
 	_ripples[_next_ripple] = Vector4(pos.x, pos.y, pos.z, _now)
+	_ripple_colors[_next_ripple] = color
 	_ripple_strength[_next_ripple] = strength
 	_next_ripple = (_next_ripple + 1) % MAX_RIPPLES
 	_push_ripples()
@@ -49,6 +52,7 @@ func add_ripple(pos: Vector3, strength: float) -> void:
 
 func _push_ripples() -> void:
 	material.set_shader_parameter("ripples", _ripples)
+	material.set_shader_parameter("ripple_colors", _ripple_colors)
 	material.set_shader_parameter("ripple_strength", _ripple_strength)
 
 
@@ -71,6 +75,12 @@ func update_view(s: float) -> void:
 		if ci < first or ci > last:
 			(_chunks[ci] as Node).queue_free()
 			_chunks.erase(ci)
+
+
+## speed_k 0..1 and the distance travelled drive the racing light streaks.
+func set_flow(speed_k: float, distance: float) -> void:
+	material.set_shader_parameter("flow", speed_k)
+	material.set_shader_parameter("flow_offset", distance)
 
 
 func set_flash(value: float) -> void:

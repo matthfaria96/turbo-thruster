@@ -36,7 +36,7 @@ macOS e Linux**.
   | **+** branco | repara 1 ponto do casco |
   | **E** azul | escudo hexagonal por 10 s (absorve um golpe) |
   | **R** laranja | rajada: cadência quase dobrada por 9 s |
-  | **B** rosa | bomba: apaga todas as balas e destrói o que está à frente |
+  | **B** rosa | +1 bomba no estoque (até 4). Solte com **Espaço**: apaga as balas e destrói o que está à frente |
 
   Levar dano tira um nível da arma.
 - **Inimigos fáceis de reconhecer.** Cada tipo tem forma e cor próprias, e a
@@ -103,6 +103,7 @@ macOS e Linux**.
 | Acelerar (frente) / frear (trás) | W / S | analógico |
 | Atirar (segurar) | botão esquerdo do mouse | A / RT |
 | Tiro carregado (segure e solte) | botão direito do mouse | X / LT |
+| Especial: bomba (até 4 em estoque) | Espaço | Y / B |
 | Pausar | Esc / P | Start |
 | Tela cheia | F11 | — |
 

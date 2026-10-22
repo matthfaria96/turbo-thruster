@@ -249,6 +249,9 @@ func _step_dying(dt: float, game: Game) -> void:
 		game.fx.explosion(global_position + offset, color if randf() < 0.7 else Color(1, 0.85, 0.5), 0.9)
 		Sfx.play("middle", -4.0, randf_range(0.8, 1.2))
 	if _death_t >= DEATH_TIME:
+		game.post.kick(1.0)
+		game.post.pulse(color, 1.0)
+		game.hitstop_t = 0.25
 		game.fx.explosion(global_position, color, 3.5)
 		game.fx.explosion(global_position, Color(1, 0.9, 0.6), 2.5)
 		game.fx.shake = 1.0
