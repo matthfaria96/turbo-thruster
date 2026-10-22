@@ -1,107 +1,188 @@
 class_name Fx
 extends Node3D
-## Particle bursts, explosions, floating score text and camera shake.
+## GPU particle effects: streak sparks, geometric shards, soft glows,
+## shockwave rings, floating score text and camera shake. Explosions also
+## ask the tunnel to ripple (see `ripple`).
+
+signal ripple(pos: Vector3, strength: float)
+
+const SHOCK_TIME := 0.45
 
 var shake := 0.0
-var _quad: QuadMesh
-var _fade_curve: Curve
-var _ramps: Dictionary = {}
+var _process_mats: Dictionary = {}
+var _spark_mesh: QuadMesh
+var _glow_mesh: QuadMesh
+var _shard_mesh: ArrayMesh
+var _shocks: Array[Dictionary] = []
 
 
 func _ready() -> void:
-	_quad = QuadMesh.new()
-	_quad.size = Vector2.ONE
-	_fade_curve = Curve.new()
-	_fade_curve.add_point(Vector2(0.0, 1.0))
-	_fade_curve.add_point(Vector2(1.0, 0.0))
+	_spark_mesh = QuadMesh.new()
+	_spark_mesh.size = Vector2(0.12, 1.0)
+	_glow_mesh = QuadMesh.new()
+	_glow_mesh.size = Vector2.ONE
+	_shard_mesh = NeonGeo.edge_mesh_from_segments([
+		[Vector3(-0.3, -0.2, 0), Vector3(0.3, -0.2, 0)],
+		[Vector3(0.3, -0.2, 0), Vector3(0, 0.35, 0)],
+		[Vector3(0, 0.35, 0), Vector3(-0.3, -0.2, 0)]])
 
 
-func burst(pos: Vector3, color: Color, amount := 24, speed := 14.0, size := 0.35, life := 0.7) -> void:
-	var p := CPUParticles3D.new()
-	p.mesh = _quad
-	p.material_override = Meshes.additive(2.4, 0.4)
-	p.amount = amount
-	p.lifetime = life
-	p.one_shot = true
-	p.explosiveness = 1.0
-	p.spread = 180.0
-	p.initial_velocity_min = speed * 0.35
-	p.initial_velocity_max = speed
-	p.gravity = Vector3.ZERO
-	p.damping_min = speed * 0.5
-	p.damping_max = speed * 1.1
-	p.scale_amount_min = size * 0.6
-	p.scale_amount_max = size * 1.4
-	p.scale_amount_curve = _fade_curve
-	p.color_ramp = _ramp(color)
-	p.position = pos
-	p.finished.connect(p.queue_free)
-	add_child(p)
-	p.emitting = true
+func _process(delta: float) -> void:
+	var cam := get_viewport().get_camera_3d()
+	for shock in _shocks:
+		shock.t += delta
+		var k := minf(1.0, shock.t / SHOCK_TIME)
+		var node: Node3D = shock.node
+		node.scale = Vector3.ONE * lerpf(0.3, shock.size, ease(k, 0.4))
+		if cam and node.global_position.distance_squared_to(cam.global_position) > 0.01:
+			node.look_at(cam.global_position, cam.global_transform.basis.y)
+		for g: GeometryInstance3D in shock.geo:
+			g.set_instance_shader_parameter("fade", 1.0 - k)
+		if k >= 1.0:
+			node.queue_free()
+	_shocks = _shocks.filter(func(s: Dictionary) -> bool: return s.t < SHOCK_TIME)
+
+
+## Fast velocity-aligned streaks.
+func sparks(pos: Vector3, color: Color, amount := 14, speed := 22.0, length := 1.2, life := 0.45) -> void:
+	var mat := _process_material("spark", color, speed, length, true)
+	_emit(pos, amount, life, mat, _spark_mesh, Meshes.streak(3.2, 0.7))
+
+
+## Small spinning triangle outlines.
+func shards(pos: Vector3, color: Color, amount := 6, speed := 10.0) -> void:
+	var mat := _process_material("shard", color, speed, 1.0, false)
+	_emit(pos, amount, 0.8, mat, _shard_mesh, NeonGeo.edge_material(color, 2.8, 0.05))
+
+
+## Soft round glow puffs.
+func glow(pos: Vector3, color: Color, amount := 4, size := 2.0, life := 0.35) -> void:
+	var mat := _process_material("glow", color, 3.0, size, false)
+	_emit(pos, amount, life, mat, _glow_mesh, Meshes.additive(2.2, 0.5))
+
+
+func shockwave(pos: Vector3, color: Color, size := 4.0) -> void:
+	var node := NeonGeo.build("shock", NeonGeo.ring(1.0, 32), color, 2.4, 0.0, 0.05)
+	add_child(node)
+	node.global_position = pos
+	_shocks.append({"node": node, "t": 0.0, "size": size, "geo": Meshes.geometry_of(node)})
 
 
 func explosion(pos: Vector3, color: Color, scale_k := 1.0) -> void:
-	burst(pos, color, int(26 * scale_k), 20.0 * scale_k, 0.32 * scale_k, 0.7)
-	burst(pos, Color(1, 1, 1), 4, 4.0 * scale_k, 0.8 * scale_k, 0.25)
-	burst(pos, color, int(5 * scale_k), 5.0 * scale_k, 0.9 * scale_k, 0.8)
-	shake = maxf(shake, 0.12 * scale_k)
-
-
-func sparks(pos: Vector3, color: Color) -> void:
-	burst(pos, color, 7, 9.0, 0.22, 0.3)
+	var root_k := sqrt(scale_k)
+	sparks(pos, color, int(30 * scale_k), 24.0 * root_k, 1.3 * sqrt(root_k), 0.5)
+	sparks(pos, Color(1, 1, 1), int(8 * scale_k), 16.0 * root_k, 0.8, 0.25)
+	shards(pos, color, int(5 * scale_k), 9.0 * root_k)
+	glow(pos, color, 2, 2.0 * root_k, 0.25)
+	shockwave(pos, color, minf(3.0 * root_k, 7.0))
+	ripple.emit(pos, clampf(0.5 * scale_k, 0.3, 2.5))
+	shake = maxf(shake, 0.1 * scale_k)
 
 
 func popup(pos: Vector3, text: String, color: Color) -> void:
 	var label := Label3D.new()
 	label.text = text
-	label.font_size = 40
+	label.font = UiStyle.display_font()
+	label.font_size = 36
 	label.outline_size = 10
 	label.pixel_size = 0.0011
 	label.fixed_size = true
-	label.modulate = color.lightened(0.4)
-	label.outline_modulate = Color(0, 0, 0, 0.8)
+	label.modulate = color.lightened(0.5)
+	label.outline_modulate = Color(0, 0, 0, 0.7)
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.shaded = false
 	label.position = pos
+	label.scale = Vector3.ONE * 0.6
 	add_child(label)
 	var tween := label.create_tween()
-	tween.tween_property(label, "modulate:a", 0.0, 0.8).set_delay(0.3)
+	tween.tween_property(label, "scale", Vector3.ONE * 1.2, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, 0.6).set_delay(0.25)
 	tween.tween_callback(label.queue_free)
 
 
-static func make_trail(color: Color) -> CPUParticles3D:
-	var p := CPUParticles3D.new()
+## Continuous trail for ships/enemies (world-space particles).
+static func make_trail(color: Color, amount := 40, life := 0.35, size := 0.45) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	var mat := ParticleProcessMaterial.new()
+	mat.direction = Vector3(0, 0, 1)
+	mat.spread = 8.0
+	mat.initial_velocity_min = 2.0
+	mat.initial_velocity_max = 5.0
+	mat.gravity = Vector3.ZERO
+	mat.scale_min = size * 0.8
+	mat.scale_max = size
+	mat.scale_curve = _fade_curve_texture()
+	mat.color_ramp = _ramp_texture(color)
+	p.process_material = mat
 	var quad := QuadMesh.new()
 	quad.size = Vector2.ONE
-	p.mesh = quad
-	p.material_override = Meshes.additive(2.2, 0.6)
-	p.amount = 50
-	p.lifetime = 0.32
+	p.draw_pass_1 = quad
+	p.material_override = Meshes.additive(2.4, 0.6)
+	p.amount = amount
+	p.lifetime = life
 	p.local_coords = false
-	p.direction = Vector3(0, 0, 1)
-	p.spread = 6.0
-	p.initial_velocity_min = 3.0
-	p.initial_velocity_max = 6.0
-	p.gravity = Vector3.ZERO
-	p.scale_amount_min = 0.35
-	p.scale_amount_max = 0.5
-	var curve := Curve.new()
-	curve.add_point(Vector2(0.0, 1.0))
-	curve.add_point(Vector2(1.0, 0.0))
-	p.scale_amount_curve = curve
-	var g := Gradient.new()
-	g.offsets = PackedFloat32Array([0.0, 0.3, 1.0])
-	g.colors = PackedColorArray([Color(1, 1, 1, 1), color, Color(color, 0.0)])
-	p.color_ramp = g
+	p.visibility_aabb = AABB(Vector3(-40, -40, -40), Vector3(80, 80, 80))
 	return p
 
 
-func _ramp(color: Color) -> Gradient:
-	var key := color.to_html()
-	if not _ramps.has(key):
-		var g := Gradient.new()
-		g.offsets = PackedFloat32Array([0.0, 0.18, 1.0])
-		g.colors = PackedColorArray([Color(1, 1, 1, 1), color, Color(color, 0.0)])
-		_ramps[key] = g
-	return _ramps[key]
+func _emit(pos: Vector3, amount: int, life: float, mat: ParticleProcessMaterial, mesh: Mesh, draw_mat: Material) -> void:
+	if amount <= 0:
+		return
+	var p := GPUParticles3D.new()
+	p.amount = amount
+	p.lifetime = life
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.process_material = mat
+	p.draw_pass_1 = mesh
+	p.material_override = draw_mat
+	p.local_coords = false
+	p.visibility_aabb = AABB(Vector3(-30, -30, -30), Vector3(60, 60, 60))
+	p.finished.connect(p.queue_free)
+	add_child(p)
+	p.global_position = pos
+	p.emitting = true
+
+
+func _process_material(kind: String, color: Color, speed: float, size: float, align: bool) -> ParticleProcessMaterial:
+	var key := "%s|%s|%.1f|%.2f" % [kind, color.to_html(), speed, size]
+	if _process_mats.has(key):
+		return _process_mats[key]
+	var mat := ParticleProcessMaterial.new()
+	mat.direction = Vector3(0, 0, 1)
+	mat.spread = 180.0
+	mat.initial_velocity_min = speed * 0.35
+	mat.initial_velocity_max = speed
+	mat.gravity = Vector3.ZERO
+	mat.damping_min = speed * 0.6
+	mat.damping_max = speed * 1.2
+	mat.scale_min = size * 0.6
+	mat.scale_max = size * 1.2
+	mat.scale_curve = _fade_curve_texture()
+	mat.color_ramp = _ramp_texture(color)
+	mat.particle_flag_align_y = align
+	if kind == "shard":
+		mat.particle_flag_rotate_y = true
+		mat.angular_velocity_min = -540.0
+		mat.angular_velocity_max = 540.0
+	_process_mats[key] = mat
+	return mat
+
+
+static func _fade_curve_texture() -> CurveTexture:
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 1.0))
+	curve.add_point(Vector2(1.0, 0.0))
+	var tex := CurveTexture.new()
+	tex.curve = curve
+	return tex
+
+
+static func _ramp_texture(color: Color) -> GradientTexture1D:
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.15, 1.0])
+	g.colors = PackedColorArray([Color(1, 1, 1, 1), color, Color(color, 0.0)])
+	var tex := GradientTexture1D.new()
+	tex.gradient = g
+	return tex

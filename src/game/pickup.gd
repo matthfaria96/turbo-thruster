@@ -11,6 +11,7 @@ var th := 0.0
 var h := 1.0
 var age := 0.0
 var _spin: Node3D
+var _halo: Node3D
 
 
 func setup(p_kind: String, p_s: float, p_th: float) -> void:
@@ -20,11 +21,14 @@ func setup(p_kind: String, p_s: float, p_th: float) -> void:
 	var model := Meshes.pickup(kind)
 	add_child(model)
 	_spin = model.get_node("Spin")
+	_halo = model.get_node("Halo")
 
 
 func step(dt: float, player: Player) -> void:
 	age += dt
 	_spin.rotation.y += dt * 3.0
+	_halo.rotation.z += dt * 1.5
+	_halo.scale = Vector3.ONE * (1.0 + sin(age * 6.0) * 0.12)
 	h = 1.0 + sin(age * 4.0) * 0.2
 	var dist := Track.distance(s, th, h, player.s, player.th, Player.H)
 	if dist < MAGNET_RADIUS:

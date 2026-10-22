@@ -5,7 +5,7 @@ extends Node3D
 
 const MAX_SHOTS := 300
 const MAX_BULLETS := 600
-const BULLET_SIZE := 1.0
+const BULLET_SIZE := 0.85
 const BULLET_RADIUS := 0.55
 
 var track: Track
@@ -17,8 +17,8 @@ var _bullet_mm: MultiMesh
 
 func setup(p_track: Track) -> void:
 	track = p_track
-	_shot_mm = _make_multimesh(MAX_SHOTS, Meshes.additive(3.0, 0.7))
-	_bullet_mm = _make_multimesh(MAX_BULLETS, Meshes.additive(2.6, 0.75))
+	_shot_mm = _make_multimesh(MAX_SHOTS, Meshes.streak(3.2, 0.75))
+	_bullet_mm = _make_multimesh(MAX_BULLETS, Meshes.additive(3.0, 0.35))
 
 
 func add_shot(shot: Dictionary) -> void:
@@ -61,13 +61,16 @@ func render() -> void:
 	_shot_mm.visible_instance_count = shots.size()
 	for i in shots.size():
 		var shot: Dictionary = shots[i]
-		_shot_mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ONE * shot.size),
-			track.point(shot.s, shot.th, shot.h)))
-		_shot_mm.set_instance_color(i, EnemyTypes.PLAYER_COLOR if not shot.pierce else Color(0.8, 1.0, 1.0))
+		var fr := track.frame(shot.s)
+		var pos: Vector3 = fr.origin + Track.radial(fr, shot.th) * (Track.RADIUS - shot.h)
+		var length: float = 6.0 if shot.pierce else 2.8
+		var basis := Basis(fr.basis.x * shot.size * 0.55, -fr.basis.z * length, fr.basis.y)
+		_shot_mm.set_instance_transform(i, Transform3D(basis, pos))
+		_shot_mm.set_instance_color(i, Color(0.75, 1.0, 1.0) if shot.pierce else EnemyTypes.SHOT_COLOR)
 	_bullet_mm.visible_instance_count = bullets.size()
 	for i in bullets.size():
 		var b: Dictionary = bullets[i]
-		var pulse := 1.0 + 0.15 * sin(b.age * 18.0)
+		var pulse := 1.1 + 0.18 * sin(b.age * 18.0)
 		_bullet_mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ONE * BULLET_SIZE * pulse),
 			track.point(b.s, b.th, b.h)))
 		_bullet_mm.set_instance_color(i, EnemyTypes.BULLET_COLOR)

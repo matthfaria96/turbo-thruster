@@ -80,11 +80,11 @@ func _build_top(index: int, level: Dictionary) -> HBoxContainer:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var left := _side_box(HORIZONTAL_ALIGNMENT_LEFT)
 	left.add_child(UiStyle.label("PONTOS", 15, UiStyle.DIM))
-	_score = UiStyle.label("0", 38, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	_score = UiStyle.label("0", 32, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
 	left.add_child(_score)
-	_combo = UiStyle.label("", 22, UiStyle.GOLD, HORIZONTAL_ALIGNMENT_LEFT, true)
+	_combo = UiStyle.label("x1", 26, EnemyTypes.GEOM_COLOR, HORIZONTAL_ALIGNMENT_LEFT, true)
 	left.add_child(_combo)
-	row.add_child(left)
+	row.add_child(_glass(left, UiStyle.ACCENT))
 	var center := VBoxContainer.new()
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -109,8 +109,20 @@ func _build_top(index: int, level: Dictionary) -> HBoxContainer:
 	right.add_child(_pips(Player.MAX_WEAPON, EnemyTypes.WEAPON_COLOR, _weapon_pips, BoxContainer.ALIGNMENT_END))
 	_speed = UiStyle.label("", 17, UiStyle.DIM, HORIZONTAL_ALIGNMENT_RIGHT)
 	right.add_child(_speed)
-	row.add_child(right)
+	row.add_child(_glass(right, EnemyTypes.WEAPON_COLOR))
 	return row
+
+
+## Geometry-Wars-style translucent block with a coloured top stripe.
+func _glass(content: Control, accent: Color) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := UiStyle.box(Color(0.02, 0.05, 0.1, 0.55), Color(accent, 0.9), 0, 3, 10)
+	sb.border_width_top = 3
+	panel.add_theme_stylebox_override("panel", sb)
+	content.custom_minimum_size.x = 260
+	panel.add_child(content)
+	return panel
 
 
 func _build_bottom() -> HBoxContainer:
@@ -119,7 +131,7 @@ func _build_bottom() -> HBoxContainer:
 	var left := _side_box(HORIZONTAL_ALIGNMENT_LEFT)
 	left.add_child(UiStyle.label("CASCO", 15, UiStyle.DIM))
 	left.add_child(_pips(Player.MAX_HULL, EnemyTypes.PLAYER_COLOR, _hull_pips, BoxContainer.ALIGNMENT_BEGIN))
-	row.add_child(left)
+	row.add_child(_glass(left, EnemyTypes.PLAYER_COLOR))
 	_charge_box = VBoxContainer.new()
 	_charge_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_charge_box.alignment = BoxContainer.ALIGNMENT_END
@@ -190,7 +202,12 @@ func _pips(count: int, color: Color, store: Array[ColorRect], align: int) -> HBo
 ## state: score, combo, progress, weapon, hull, speed, charge
 func refresh(state: Dictionary, dt: float) -> void:
 	_score.text = _format_int(state.score)
-	_combo.text = "COMBO x%d" % state.combo if state.combo > 1 else ""
+	var mult_text := "x%d" % state.multiplier
+	if _combo.text != mult_text:
+		_combo.text = mult_text
+		_combo.pivot_offset = _combo.size * Vector2(0.0, 0.5)
+		_combo.scale = Vector2.ONE * 1.25
+	_combo.scale = _combo.scale.lerp(Vector2.ONE, minf(1.0, dt * 10.0))
 	_progress.value = state.progress
 	_weapon_label.text = "ARMA  NV %d%s" % [state.weapon, "  MÁX" if state.weapon >= Player.MAX_WEAPON else ""]
 	_set_pips(_weapon_pips, state.weapon)
@@ -216,6 +233,8 @@ func show_boss(boss_name: String) -> void:
 	_title.visible = false
 	_boss_box.visible = true
 	_boss_name.text = "CHEFE  ·  " + boss_name.to_upper()
+	if not UiStyle.supports_display(_boss_name.text):
+		_boss_name.label_settings.font = UiStyle.font()
 
 
 func hide_boss() -> void:

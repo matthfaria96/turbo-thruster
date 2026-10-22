@@ -45,7 +45,7 @@ var _model: Node3D
 func _ready() -> void:
 	_model = Meshes.ship()
 	add_child(_model)
-	var trail := Fx.make_trail(EnemyTypes.PLAYER_COLOR)
+	var trail := Fx.make_trail(EnemyTypes.PLAYER_COLOR, 140, 0.28, 0.5)
 	trail.position = Vector3(0, 0, 1.1)
 	_model.add_child(trail)
 	trail.emitting = true

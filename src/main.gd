@@ -97,6 +97,7 @@ func _parse_args() -> Dictionary:
 func _capture_later(path: String, delay: float) -> void:
 	await get_tree().create_timer(delay, true, false, true).timeout
 	await RenderingServer.frame_post_draw
+	print("fps=", Engine.get_frames_per_second())
 	var image := get_viewport().get_texture().get_image()
 	var err := image.save_png(path)
 	if err != OK:

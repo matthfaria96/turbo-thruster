@@ -12,23 +12,30 @@ const GOLD := Color(1.0, 0.82, 0.3)
 const PANEL_BG := Color(0.03, 0.05, 0.1, 0.9)
 
 static var _theme: Theme
-static var _font: SystemFont
-static var _bold: SystemFont
+static var _body: FontVariation
+static var _display: FontVariation
+
+const BODY_FONT := preload("res://assets/fonts/Rajdhani-SemiBold.ttf")
+const DISPLAY_FONT := preload("res://assets/fonts/Orbitron.ttf")
 
 
-static func font(bold := false) -> SystemFont:
-	if _font == null:
-		_font = _make_font(600)
-		_bold = _make_font(800)
-	return _bold if bold else _font
+## Clean condensed sans for text (Rajdhani).
+static func font(_bold := false) -> Font:
+	if _body == null:
+		_body = FontVariation.new()
+		_body.base_font = BODY_FONT
+		_body.spacing_glyph = 1
+	return _body
 
 
-static func _make_font(weight: int) -> SystemFont:
-	var f := SystemFont.new()
-	f.font_names = PackedStringArray(["SF Pro Display", "Segoe UI", "Helvetica Neue", "Arial"])
-	f.font_weight = weight
-	f.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
-	return f
+## Geometric display face for titles and numbers (Orbitron, heavy).
+static func display_font() -> Font:
+	if _display == null:
+		_display = FontVariation.new()
+		_display.base_font = DISPLAY_FONT
+		_display.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): 800}
+		_display.spacing_glyph = 2
+	return _display
 
 
 static func theme() -> Theme:
@@ -49,7 +56,7 @@ static func theme() -> Theme:
 		t.set_color(state, "Button", TEXT if state == "font_color" else Color(1, 1, 1))
 	t.set_color("font_disabled_color", "Button", Color(DIM, 0.55))
 	t.set_color("font_color", "Label", TEXT)
-	t.set_stylebox("panel", "PanelContainer", box(PANEL_BG, Color(0.22, 0.32, 0.48, 0.8), 1, 18, 30))
+	t.set_stylebox("panel", "PanelContainer", box(PANEL_BG, Color(0.22, 0.32, 0.48, 0.8), 1, 8, 30))
 	t.set_stylebox("background", "ProgressBar", box(Color(0.05, 0.07, 0.12, 0.85), Color(0.2, 0.28, 0.4), 1, 4, 0))
 	t.set_stylebox("fill", "ProgressBar", box(ACCENT, ACCENT, 0, 4, 0))
 	t.set_constant("separation", "VBoxContainer", 12)
@@ -58,7 +65,7 @@ static func theme() -> Theme:
 	return t
 
 
-static func box(bg: Color, border: Color, border_w := 2, corner := 12, pad := 16) -> StyleBoxFlat:
+static func box(bg: Color, border: Color, border_w := 2, corner := 6, pad := 16) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
 	sb.border_color = border
@@ -78,20 +85,33 @@ static func label(text: String, size := 22, color := TEXT, align := HORIZONTAL_A
 	l.horizontal_alignment = align
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var ls := LabelSettings.new()
-	ls.font = font(bold)
+	ls.font = display_font() if bold and supports_display(text) else font()
 	ls.font_size = size
 	ls.font_color = color
 	l.label_settings = ls
 	return l
 
 
-## Big glowing heading.
+## Orbitron draws the tilde like a grave accent; use Rajdhani for ã/õ.
+static func supports_display(text: String) -> bool:
+	for ch in ["ã", "õ", "Ã", "Õ"]:
+		if text.contains(ch):
+			return false
+	return true
+
+
+## Big glowing heading (Rajdhani, wide tracking — reads well with accents).
 static func title(text: String, size := 64, color := ACCENT) -> Label:
-	var l := label(text, size, Color(1, 1, 1), HORIZONTAL_ALIGNMENT_CENTER, true)
-	l.label_settings.outline_size = int(size * 0.18)
-	l.label_settings.outline_color = Color(color, 0.55)
-	l.label_settings.shadow_size = int(size * 0.5)
-	l.label_settings.shadow_color = Color(color, 0.35)
+	var l := label(text, size, Color(1, 1, 1), HORIZONTAL_ALIGNMENT_CENTER, false)
+	var tracked := FontVariation.new()
+	tracked.base_font = BODY_FONT
+	tracked.spacing_glyph = int(size * 0.08)
+	tracked.variation_embolden = 0.6
+	l.label_settings.font = tracked
+	l.label_settings.outline_size = int(size * 0.045)
+	l.label_settings.outline_color = Color(color, 0.85)
+	l.label_settings.shadow_size = int(size * 0.6)
+	l.label_settings.shadow_color = Color(color, 0.45)
 	l.label_settings.shadow_offset = Vector2.ZERO
 	return l
 

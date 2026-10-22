@@ -30,6 +30,7 @@ var _escort_cd := 6.0
 var _model: Node3D
 var _ring_a: Node3D
 var _ring_b: Node3D
+var _core: Node3D
 var _geometry: Array[GeometryInstance3D] = []
 
 
@@ -45,6 +46,7 @@ func setup(level: Dictionary, index: int, p_s: float, p_th: float) -> void:
 	add_child(_model)
 	_ring_a = _model.get_node("RingA")
 	_ring_b = _model.get_node("RingB")
+	_core = _model.get_node("Core")
 	_geometry = Meshes.geometry_of(_model)
 
 
@@ -55,8 +57,10 @@ func health_ratio() -> float:
 func step(dt: float, game: Game) -> void:
 	_t += dt
 	_flash = maxf(0.0, _flash - dt * 6.0)
-	_ring_a.rotation.z += dt * 1.4
+	_ring_a.rotation.z += dt * (1.4 if hp > max_hp * 0.5 else 2.6)
 	_ring_b.rotation.y += dt * 0.9
+	_ring_b.rotation.x += dt * 0.5
+	_core.rotation += Vector3(0.4, 0.7, 0.0) * dt
 	for g in _geometry:
 		g.set_instance_shader_parameter("hit", _flash)
 	s = lerpf(s, game.player.s + 52.0, minf(1.0, dt * 1.1))

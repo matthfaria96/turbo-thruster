@@ -6,12 +6,16 @@ var _track: Track
 var _tunnel: Tunnel
 var _camera: Camera3D
 var _ship: Node3D
+var _space: SpaceBackdrop
 var _s := 40.0
 var _t := 0.0
 
 
 func _ready() -> void:
 	add_child(WorldEnv.new())
+	_space = SpaceBackdrop.new()
+	add_child(_space)
+	_space.setup(Color(0.35, 0.5, 1.0))
 	_track = Track.new(0.7, 7)
 	_tunnel = Tunnel.new()
 	_tunnel.setup(_track, Color(0.35, 0.5, 1.0))
@@ -41,3 +45,4 @@ func _process(delta: float) -> void:
 	var target := _track.point(_s + 30.0, th * 0.6, Track.RADIUS - 2.0)
 	_camera.look_at_from_position(eye, target, -Track.radial(_track.frame(_s), th * 0.6))
 	_tunnel.update_view(_s)
+	_space.follow(_camera, delta)

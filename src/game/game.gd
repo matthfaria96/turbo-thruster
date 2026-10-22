@@ -11,7 +11,7 @@ enum State { INTRO, PLAY, BOSS, PORTAL, FINALE, RESULTS, DEAD, OVER }
 const INTRO_TIME := 2.0
 const SPAWN_AHEAD := 150.0
 const FINALE_TIME := 2.2
-const COMBO_WINDOW := 1.6
+const MAX_MULTIPLIER := 99
 const ACTIVE_STATES := [State.INTRO, State.PLAY, State.BOSS, State.PORTAL]
 
 var level_index := 0
@@ -22,8 +22,8 @@ var state_t := 0.0
 var score := 0
 var kills := 0
 var plan_kills := 0
-var combo := 0
-var max_combo := 0
+var multiplier := 1
+var max_multiplier := 1
 var hits_taken := 0
 var elapsed := 0.0
 
@@ -36,10 +36,11 @@ var hud: Hud
 var camera: Camera3D
 var enemies: Array[Enemy] = []
 var pickups: Array[Pickup] = []
+var geoms: Geoms
+var backdrop: SpaceBackdrop
 
 var _plan: Array[Dictionary] = []
 var _plan_total := 0
-var _combo_t := 0.0
 var _cam_th := 0.0
 var _kills_since_drop := 0
 var _portal: Node3D
@@ -59,13 +60,22 @@ func setup(index: int, autoplay := false, start_s := 0.0) -> void:
 
 func _ready() -> void:
 	track = Track.new(level.curve, 1000 + level_index * 77)
-	add_child(WorldEnv.new())
+	var env := WorldEnv.new()
+	env.tint = level.tint
+	add_child(env)
+	backdrop = SpaceBackdrop.new()
+	add_child(backdrop)
+	backdrop.setup(level.tint)
 	tunnel = Tunnel.new()
 	tunnel.setup(track, level.tint)
-	tunnel.set_brightness(0.8)
 	add_child(tunnel)
 	fx = Fx.new()
 	add_child(fx)
+	fx.ripple.connect(tunnel.add_ripple)
+	geoms = Geoms.new()
+	add_child(geoms)
+	geoms.setup(track)
+	geoms.collected.connect(_on_geom)
 	projectiles = Projectiles.new()
 	add_child(projectiles)
 	projectiles.setup(track)
@@ -73,7 +83,7 @@ func _ready() -> void:
 	add_child(player)
 	player.nova_fired.connect(_on_nova)
 	camera = Camera3D.new()
-	camera.fov = 72.0
+	camera.fov = 78.0
 	camera.near = 0.1
 	camera.far = 420.0
 	add_child(camera)
@@ -113,15 +123,15 @@ func _process(delta: float) -> void:
 		_spawn_from_plan()
 	_step_entities(dt)
 	projectiles.update(dt, player.s)
+	geoms.update(dt, player)
 	if state in [State.PLAY, State.BOSS, State.PORTAL]:
 		_resolve_hits()
-	_combo_t -= dt
-	if _combo_t <= 0.0:
-		combo = 0
 	_sync_transforms(dt)
 	projectiles.render()
+	geoms.render()
 	tunnel.update_view(player.s)
-	hud.refresh({"score": score, "combo": combo, "progress": clampf(player.s / level.length, 0.0, 1.0),
+	backdrop.follow(camera, dt)
+	hud.refresh({"score": score, "multiplier": multiplier, "progress": clampf(player.s / level.length, 0.0, 1.0),
 		"weapon": player.weapon, "hull": maxi(player.hull, 0), "speed": player.speed,
 		"charge": player.charge}, dt)
 	if boss:
@@ -234,11 +244,11 @@ func _sync_transforms(dt: float) -> void:
 
 func _update_camera(dt: float) -> void:
 	_cam_th = lerp_angle(_cam_th, player.th, minf(1.0, 7.0 * dt)) if dt > 0.0 else player.th
-	var eye := track.point(player.s - 8.5, _cam_th, Track.RADIUS - 4.0)
-	var target := track.point(player.s + 16.0, _cam_th, Track.RADIUS - 2.2)
+	var eye := track.point(player.s - 7.0, _cam_th, Track.RADIUS - 3.0)
+	var target := track.point(player.s + 26.0, _cam_th, Track.RADIUS - 3.4)
 	var up := -Track.radial(track.frame(player.s), _cam_th)
 	camera.look_at_from_position(eye, target, up)
-	camera.fov = lerpf(camera.fov, 70.0 + (player.speed - Player.BASE_SPEED) * 0.35, minf(1.0, dt * 4.0))
+	camera.fov = lerpf(camera.fov, 78.0 + (player.speed - Player.BASE_SPEED) * 0.4, minf(1.0, dt * 4.0))
 	var amount := fx.shake if bool(Save.settings.shake) else 0.0
 	camera.h_offset = randf_range(-1.0, 1.0) * amount * 0.6
 	camera.v_offset = randf_range(-1.0, 1.0) * amount * 0.6
@@ -270,7 +280,9 @@ func fire_ring(s: float, h: float, count: int, gap_th: float, gap: int, rel_spee
 
 func _on_nova(s: float, th: float) -> void:
 	projectiles.add_shot(player.nova_shot(s, th))
-	fx.burst(track.point(s, th, Player.H), Color(0.8, 1.0, 1.0), 30, 16.0, 0.5, 0.5)
+	var at := track.point(s, th, Player.H)
+	fx.sparks(at, Color(0.8, 1.0, 1.0), 40, 30.0, 1.6, 0.4)
+	fx.shockwave(at, Color(0.8, 1.0, 1.0), 5.0)
 	fx.shake = maxf(fx.shake, 0.25)
 	Sfx.play("nova")
 
@@ -300,7 +312,7 @@ func _shot_vs_targets(shot: Dictionary) -> void:
 			if e.damage(shot.dmg):
 				_on_enemy_killed(e)
 			else:
-				fx.sparks(e.global_position, e.spec.color)
+				fx.sparks(e.global_position, e.spec.color, 8, 14.0, 0.8, 0.25)
 				Sfx.play("hit", -10.0)
 			if not shot.pierce:
 				shot.dead = true
@@ -308,7 +320,7 @@ func _shot_vs_targets(shot: Dictionary) -> void:
 		if not shot.pierce or not shot.has("hit_boss"):
 			if boss.damage(shot.dmg):
 				_on_boss_killed()
-			fx.sparks(track.point(boss.s - 2.5, shot.th, shot.h), boss.color)
+			fx.sparks(track.point(boss.s - 2.5, shot.th, shot.h), boss.color, 8, 16.0, 0.9, 0.25)
 			Sfx.play("hit", -10.0)
 		shot["hit_boss"] = true
 		if not shot.pierce:
@@ -329,7 +341,7 @@ func _nova_clears_bullets() -> void:
 		var removed := projectiles.clear_bullets(func(b: Dictionary) -> bool:
 			return absf(b.s - nova.s) < 6.0 and absf(Track.angle_diff(b.th, nova.th)) < 0.45)
 		for b in removed:
-			fx.sparks(track.point(b.s, b.th, b.h), EnemyTypes.BULLET_COLOR)
+			fx.sparks(track.point(b.s, b.th, b.h), EnemyTypes.BULLET_COLOR, 5, 10.0, 0.6, 0.25)
 			score += 10
 
 
@@ -372,7 +384,7 @@ func _hurt_player() -> void:
 	fx.explosion(player.global_position, EnemyTypes.PLAYER_COLOR, 0.8)
 	fx.shake = 0.7
 	hud.damage_pulse()
-	combo = 0
+	multiplier = maxi(1, multiplier / 2)
 	if died:
 		_on_player_died()
 		return
@@ -390,16 +402,14 @@ func _on_enemy_killed(e: Enemy) -> void:
 	kills += 1
 	if e.from_plan:
 		plan_kills += 1
-	combo = combo + 1 if _combo_t > 0.0 else 1
-	_combo_t = COMBO_WINDOW
-	max_combo = maxi(max_combo, combo)
-	var points := int(e.spec.score * mini(combo, 8) * _speed_mult())
+	var points := int(e.spec.score * multiplier * _speed_mult())
 	score += points
 	var big := e.kind == "tank"
 	fx.explosion(e.global_position, e.spec.color, 1.8 if big else 1.0)
 	fx.popup(e.global_position + Vector3.UP * 0.5, "+%d" % points, e.spec.color)
 	Sfx.play("middle" if big else "small", -3.0, randf_range(0.9, 1.1))
 	_maybe_drop(e)
+	geoms.drop(e.s, e.th, e.h, 2 + int(e.spec.hp / 3.0))
 	e.queue_free()
 
 
@@ -421,7 +431,8 @@ func _maybe_drop(e: Enemy) -> void:
 
 func _collect(p: Pickup) -> void:
 	Sfx.play("pickup", -2.0)
-	fx.burst(p.global_position, p.color(), 26, 10.0, 0.4, 0.6)
+	fx.sparks(p.global_position, p.color(), 30, 16.0, 1.0, 0.4)
+	fx.shockwave(p.global_position, p.color(), 3.0)
 	if p.kind == "weapon":
 		if player.upgrade_weapon():
 			hud.announce("", "ARMA NÍVEL %d" % player.weapon, 1.0, UiStyle.GOOD)
@@ -503,7 +514,7 @@ func _step_finale(dt: float) -> void:
 func _explode_all_bullets() -> void:
 	var removed := projectiles.clear_bullets(func(_b: Dictionary) -> bool: return true)
 	for b in removed:
-		fx.sparks(track.point(b.s, b.th, b.h), EnemyTypes.BULLET_COLOR)
+		fx.sparks(track.point(b.s, b.th, b.h), EnemyTypes.BULLET_COLOR, 5, 10.0, 0.6, 0.25)
 
 
 # ---------------------------------------------------------------- results
@@ -532,7 +543,7 @@ func _show_results() -> void:
 	var rows := [
 		["Pontos", Hud._format_int(score)],
 		["Abates", "%d / %d" % [plan_kills, _plan_total]],
-		["Maior combo", "x%d" % max_combo],
+		["Maior multiplicador", "x%d" % max_multiplier],
 		["Bônus de casco", "+" + Hud._format_int(hull_bonus)],
 		["Bônus de tempo (%ds)" % int(elapsed), "+" + Hud._format_int(time_bonus)],
 		["Total", Hud._format_int(total), UiStyle.TEXT],
@@ -609,3 +620,10 @@ func _leave(next_level: int) -> void:
 		request_menu.emit.call_deferred()
 	else:
 		request_level.emit.call_deferred(next_level)
+
+
+func _on_geom(pos: Vector3) -> void:
+	multiplier = mini(MAX_MULTIPLIER, multiplier + 1)
+	max_multiplier = maxi(max_multiplier, multiplier)
+	fx.sparks(pos, EnemyTypes.GEOM_COLOR, 4, 8.0, 0.5, 0.2)
+	Sfx.play("shot", -18.0, 2.2)

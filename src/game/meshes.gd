@@ -1,186 +1,131 @@
 class_name Meshes
 extends RefCounted
-## Procedural neon models. Every enemy type has a distinct silhouette.
+## All gameplay models, built from NeonGeo shapes (glowing edges + glass fill).
 
-const GLOW_SHADER := preload("res://src/shaders/glow.gdshader")
 const PARTICLE_SHADER := preload("res://src/shaders/particle.gdshader")
+const STREAK_SHADER := preload("res://src/shaders/streak.gdshader")
 const VORTEX_SHADER := preload("res://src/shaders/vortex.gdshader")
 
 static var _materials: Dictionary = {}
 
 
-static func glow(color: Color, energy := 1.5) -> ShaderMaterial:
-	var key := "g%s|%.2f" % [color.to_html(), energy]
-	if not _materials.has(key):
-		var mat := ShaderMaterial.new()
-		mat.shader = GLOW_SHADER
-		mat.set_shader_parameter("color", color)
-		mat.set_shader_parameter("energy", energy)
-		_materials[key] = mat
-	return _materials[key]
-
-
 static func additive(energy := 2.5, core := 0.0) -> ShaderMaterial:
-	var key := "a%.2f|%.2f" % [energy, core]
+	return _cached("a%.2f|%.2f" % [energy, core], PARTICLE_SHADER, {"energy": energy, "core": core})
+
+
+static func streak(energy := 3.0, core := 0.6) -> ShaderMaterial:
+	return _cached("s%.2f|%.2f" % [energy, core], STREAK_SHADER, {"energy": energy, "core": core})
+
+
+static func _cached(key: String, shader: Shader, params: Dictionary) -> ShaderMaterial:
 	if not _materials.has(key):
 		var mat := ShaderMaterial.new()
-		mat.shader = PARTICLE_SHADER
-		mat.set_shader_parameter("energy", energy)
-		mat.set_shader_parameter("core", core)
+		mat.shader = shader
+		for p: String in params:
+			mat.set_shader_parameter(p, params[p])
 		_materials[key] = mat
 	return _materials[key]
 
 
-static func add_part(parent: Node3D, mesh: Mesh, mat: Material, pos := Vector3.ZERO,
-		rot := Vector3.ZERO, scl := Vector3.ONE) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	mi.rotation = rot
-	mi.scale = scl
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(mi)
-	return mi
+static func _named(name: String, child: Node3D) -> Node3D:
+	child.name = name
+	return child
 
 
-static func box(size: Vector3) -> BoxMesh:
-	var m := BoxMesh.new()
-	m.size = size
-	return m
-
-
-static func prism(size: Vector3) -> PrismMesh:
-	var m := PrismMesh.new()
-	m.size = size
-	return m
-
-
-static func sphere(radius: float, segments := 12, rings := 6) -> SphereMesh:
-	var m := SphereMesh.new()
-	m.radius = radius
-	m.height = radius * 2.0
-	m.radial_segments = segments
-	m.rings = rings
-	return m
-
-
-static func torus(inner: float, outer: float, segments := 32) -> TorusMesh:
-	var m := TorusMesh.new()
-	m.inner_radius = inner
-	m.outer_radius = outer
-	m.rings = segments
-	m.ring_segments = 8
-	return m
-
-
-static func cylinder(radius: float, height: float, segments := 12) -> CylinderMesh:
-	var m := CylinderMesh.new()
-	m.top_radius = radius
-	m.bottom_radius = radius
-	m.height = height
-	m.radial_segments = segments
-	return m
-
-
-## Player ship: nose toward -Z (forward), cyan/white.
+## Player: white-cyan claw, nose toward -Z.
 static func ship() -> Node3D:
 	var root := Node3D.new()
-	var body := glow(EnemyTypes.PLAYER_COLOR, 1.25)
-	var wing := glow(Color(0.2, 0.55, 1.0), 1.1)
-	var hot := glow(Color(1.0, 1.0, 1.0), 2.6)
-	add_part(root, prism(Vector3(0.9, 2.4, 0.35)), body, Vector3(0, 0, -0.2), Vector3(-PI / 2, 0, 0))
-	add_part(root, box(Vector3(2.6, 0.08, 0.55)), wing, Vector3(0, -0.05, 0.55))
-	add_part(root, box(Vector3(0.1, 0.35, 0.7)), hot, Vector3(-1.3, 0.1, 0.55))
-	add_part(root, box(Vector3(0.1, 0.35, 0.7)), hot, Vector3(1.3, 0.1, 0.55))
-	add_part(root, sphere(0.2), glow(Color(0.7, 1.0, 1.0), 2.2), Vector3(0, 0.2, -0.3))
-	add_part(root, sphere(0.17), hot, Vector3(0, 0, 1.0))
-	root.scale = Vector3.ONE * 0.8
+	var claw := PackedVector2Array([Vector2(0, 1.25), Vector2(0.38, 0.1), Vector2(1.15, -0.55),
+		Vector2(0.45, -0.3), Vector2(0, -0.75), Vector2(-0.45, -0.3), Vector2(-1.15, -0.55), Vector2(-0.38, 0.1)])
+	var body := NeonGeo.build("ship", NeonGeo.extrude(claw, 0.3), EnemyTypes.PLAYER_COLOR, 1.8, 0.12, 0.07)
+	body.rotation = Vector3(-PI / 2, 0, 0)
+	root.add_child(body)
+	var cockpit := NeonGeo.build("ship_core", NeonGeo.octa(0.22, 1.6), Color(1, 1, 1), 2.0, 0.25, 0.05)
+	cockpit.position = Vector3(0, 0.22, -0.15)
+	root.add_child(cockpit)
+	root.scale = Vector3.ONE * 0.95
 	return root
 
 
-## Enemy models face +Z (toward the approaching player).
+## Enemies face +Z (toward the player). Animated parts are named "Spin".
 static func enemy(kind: String) -> Node3D:
 	var root := Node3D.new()
 	var color: Color = EnemyTypes.get_type(kind).color
-	var mat := glow(color, 1.7)
-	var core := glow(Color(1.0, 0.95, 0.85), 2.6)
 	match kind:
 		"drone":
-			add_part(root, prism(Vector3(1.6, 1.8, 0.5)), mat, Vector3.ZERO, Vector3(PI / 2, 0, 0))
-			add_part(root, sphere(0.28), core, Vector3(0, 0.25, 0.1))
+			var spin := _named("Spin", NeonGeo.build("tetra", NeonGeo.tetra(1.0), color, 1.7, 0.12))
+			root.add_child(spin)
 		"weaver":
 			var spin := Node3D.new()
 			spin.name = "Spin"
+			for i in 4:
+				var a := TAU * i / 4.0
+				var tri := PackedVector2Array([Vector2.ZERO, Vector2(cos(a), sin(a)) * 1.25,
+					Vector2(cos(a + 0.7), sin(a + 0.7)) * 0.8])
+				spin.add_child(NeonGeo.build("pin%d" % i, NeonGeo.extrude(tri, 0.12), color, 1.7, 0.14))
 			root.add_child(spin)
-			add_part(spin, box(Vector3(2.4, 0.3, 0.18)), mat, Vector3.ZERO, Vector3(0, 0, PI / 4))
-			add_part(spin, box(Vector3(2.4, 0.3, 0.18)), mat, Vector3.ZERO, Vector3(0, 0, -PI / 4))
-			add_part(root, sphere(0.35), core)
 		"gunner":
-			add_part(root, box(Vector3(1.5, 0.9, 1.3)), mat)
-			add_part(root, cylinder(0.2, 1.3), core, Vector3(0, 0, 0.9), Vector3(PI / 2, 0, 0))
-			add_part(root, box(Vector3(0.25, 1.6, 0.8)), mat, Vector3(-0.95, 0, 0))
-			add_part(root, box(Vector3(0.25, 1.6, 0.8)), mat, Vector3(0.95, 0, 0))
+			var spin := _named("Spin", NeonGeo.build("cube", NeonGeo.cube(1.05), color, 1.7, 0.12))
+			root.add_child(spin)
+			var inner := NeonGeo.build("cube_in", NeonGeo.cube(0.45), Color(1, 0.9, 0.7), 2.0, 0.2, 0.05)
+			root.add_child(inner)
 		"mine":
-			var spin := Node3D.new()
-			spin.name = "Spin"
+			var spin := _named("Spin", NeonGeo.build("star", NeonGeo.star(6, 1.15, 0.45, 0.35), color, 1.7, 0.14))
 			root.add_child(spin)
-			add_part(spin, sphere(0.6, 8, 4), mat)
-			add_part(spin, box(Vector3(2.0, 0.2, 0.2)), mat)
-			add_part(spin, box(Vector3(0.2, 2.0, 0.2)), mat)
-			add_part(spin, box(Vector3(0.2, 0.2, 2.0)), mat)
-			add_part(spin, sphere(0.3), core)
 		"tank":
-			add_part(root, cylinder(1.5, 0.8, 6), mat, Vector3.ZERO, Vector3(PI / 2, 0, 0))
-			var spin := Node3D.new()
-			spin.name = "Spin"
+			var spin := _named("Spin", NeonGeo.build("icosa", NeonGeo.icosa(1.5), color, 1.7, 0.12))
 			root.add_child(spin)
-			add_part(spin, torus(1.7, 2.0, 24), glow(color.lightened(0.3), 1.8), Vector3.ZERO, Vector3(PI / 2, 0, 0))
-			add_part(root, sphere(0.55), core, Vector3(0, 0, 0.5))
+			var orbit := Node3D.new()
+			orbit.name = "Orbit"
+			for i in 3:
+				var a := TAU * i / 3.0
+				var shard := NeonGeo.build("shard", NeonGeo.tetra(0.38), color.lightened(0.3), 2.0, 0.15, 0.05)
+				shard.position = Vector3(cos(a), sin(a), 0) * 2.2
+				orbit.add_child(shard)
+			root.add_child(orbit)
 	return root
 
 
+## Boss: geodesic core inside a rotating chain of triangle "teeth".
 static func boss(color: Color) -> Node3D:
 	var root := Node3D.new()
-	var mat := glow(color, 1.05)
-	add_part(root, sphere(2.0, 16, 8), mat)
-	add_part(root, sphere(0.8), glow(Color(1, 0.95, 0.85), 1.8), Vector3(0, 0, 1.6))
+	root.add_child(_named("Core", NeonGeo.build("boss_core", NeonGeo.icosa(2.2), color, 1.7, 0.1, 0.09)))
+	root.add_child(NeonGeo.build("boss_heart", NeonGeo.octa(0.8), Color(1, 1, 1), 2.2, 0.25, 0.06))
 	var ring_a := Node3D.new()
 	ring_a.name = "RingA"
+	for i in 14:
+		var a := TAU * i / 14.0
+		var tooth := NeonGeo.build("tooth", NeonGeo.extrude(PackedVector2Array([Vector2(-0.45, 0), Vector2(0.45, 0), Vector2(0, 0.85)]), 0.25),
+			color.lightened(0.15), 1.8, 0.15, 0.06)
+		tooth.position = Vector3(cos(a), sin(a), 0) * 3.4
+		tooth.rotation.z = a - PI / 2
+		ring_a.add_child(tooth)
 	root.add_child(ring_a)
-	add_part(ring_a, torus(2.7, 3.1, 32), glow(color.lightened(0.25), 1.2), Vector3.ZERO, Vector3(PI / 2, 0, 0))
-	for i in 4:
-		var a := TAU * i / 4.0
-		add_part(ring_a, box(Vector3(0.8, 0.8, 0.8)), mat, Vector3(cos(a), sin(a), 0) * 3.4, Vector3(0, 0, a))
-	var ring_b := Node3D.new()
-	ring_b.name = "RingB"
+	var ring_b := _named("RingB", NeonGeo.build("boss_ring", NeonGeo.ring(4.3, 40), color, 1.6, 0.0, 0.06))
 	root.add_child(ring_b)
-	add_part(ring_b, torus(3.8, 4.05, 40), glow(color, 0.9), Vector3.ZERO, Vector3(PI / 2 + 0.3, 0, 0))
-	root.scale = Vector3.ONE * 0.75
+	root.scale = Vector3.ONE * 0.8
 	return root
 
 
 static func pickup(kind: String) -> Node3D:
 	var root := Node3D.new()
 	var color := EnemyTypes.WEAPON_COLOR if kind == "weapon" else EnemyTypes.REPAIR_COLOR
-	var spin := Node3D.new()
-	spin.name = "Spin"
-	root.add_child(spin)
-	add_part(spin, sphere(0.75, 4, 2), glow(color, 1.8), Vector3.ZERO, Vector3.ZERO, Vector3(1, 1.3, 1))
-	add_part(root, torus(1.05, 1.2, 24), glow(color, 1.4), Vector3.ZERO, Vector3(PI / 2, 0, 0))
+	root.add_child(_named("Spin", NeonGeo.build("pick_" + kind, NeonGeo.octa(0.75, 1.4), color, 2.0, 0.18)))
+	root.add_child(_named("Halo", NeonGeo.build("pick_ring", NeonGeo.ring(1.2, 24), color, 2.0, 0.0, 0.05)))
 	var label := Label3D.new()
 	label.text = "P" if kind == "weapon" else "+"
-	label.font_size = 96
-	label.outline_size = 18
-	label.pixel_size = 0.01
+	label.font = UiStyle.display_font()
+	label.font_size = 72
+	label.outline_size = 16
+	label.pixel_size = 0.012
 	label.modulate = Color(1, 1, 1)
-	label.outline_modulate = color.darkened(0.4)
+	label.outline_modulate = color.darkened(0.5)
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.shaded = false
-	label.position = Vector3(0, 1.6, 0)
+	label.position = Vector3(0, 1.7, 0)
 	root.add_child(label)
-	root.scale = Vector3.ONE * 0.7
+	root.scale = Vector3.ONE * 0.75
 	return root
 
 
@@ -188,22 +133,25 @@ static func portal() -> Node3D:
 	var root := Node3D.new()
 	var ring := Node3D.new()
 	ring.name = "Ring"
+	ring.add_child(NeonGeo.build("portal_ring", NeonGeo.ring(6.2, 48), Color(0.6, 0.95, 1.0), 3.2, 0.0, 0.18))
+	ring.add_child(NeonGeo.build("portal_star", NeonGeo.star(12, 6.0, 5.2, 0.25), Color(1, 1, 1), 2.4, 0.0, 0.08))
 	root.add_child(ring)
-	add_part(ring, torus(5.7, 6.5, 64), glow(Color(0.6, 0.95, 1.0), 2.4), Vector3.ZERO, Vector3(PI / 2, 0, 0))
-	for i in 12:
-		var a := TAU * i / 12.0
-		add_part(ring, box(Vector3(0.5, 1.2, 0.5)), glow(Color(1, 1, 1), 3.0),
-			Vector3(cos(a), sin(a), 0) * 6.1, Vector3(0, 0, a + PI / 2))
+	var inner := NeonGeo.build("portal_inner", NeonGeo.ring(4.2, 6), Color(1.0, 0.5, 1.0), 2.6, 0.0, 0.1)
+	inner.name = "Inner"
+	root.add_child(inner)
 	var disc_mat := ShaderMaterial.new()
 	disc_mat.shader = VORTEX_SHADER
 	var disc := QuadMesh.new()
 	disc.size = Vector2(12.5, 12.5)
-	var disc_node := add_part(root, disc, disc_mat)
+	var disc_node := MeshInstance3D.new()
+	disc_node.mesh = disc
+	disc_node.material_override = disc_mat
 	disc_node.name = "Disc"
+	root.add_child(disc_node)
 	return root
 
 
-## Collects every mesh under a node so hit-flash can be applied.
+## Collects every mesh under a node so hit-flash/fade can be applied.
 static func geometry_of(node: Node) -> Array[GeometryInstance3D]:
 	var out: Array[GeometryInstance3D] = []
 	for child in node.find_children("*", "GeometryInstance3D", true, false):

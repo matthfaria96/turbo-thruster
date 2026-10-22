@@ -19,6 +19,7 @@ var _flash := 0.0
 var _difficulty := 1.0
 var _model: Node3D
 var _spin: Node3D
+var _orbit: Node3D
 var _geometry: Array[GeometryInstance3D] = []
 
 
@@ -36,13 +37,19 @@ func setup(p_kind: String, p_s: float, p_th: float, phase: float, difficulty: fl
 	_model = Meshes.enemy(kind)
 	add_child(_model)
 	_spin = _model.get_node_or_null("Spin")
+	_orbit = _model.get_node_or_null("Orbit")
 	_geometry = Meshes.geometry_of(_model)
 	_model.scale = Vector3.ONE * 0.01
+	if kind in ["drone", "weaver", "tank"]:
+		var trail := Fx.make_trail(spec.color, 18, 0.25, 0.5 if kind == "tank" else 0.3)
+		trail.position = Vector3(0, 0, -0.6)
+		add_child(trail)
+		trail.emitting = true
 
 
 func step(dt: float, game: Game) -> void:
 	age += dt
-	_flash = maxf(0.0, _flash - dt * 6.0)
+	_flash = maxf(0.0, _flash - dt * 10.0)
 	var ahead := s - game.player.s
 	match kind:
 		"drone":
@@ -59,13 +66,7 @@ func step(dt: float, game: Game) -> void:
 			_hold_ahead(dt, game, 44.0, 9.0)
 			th = lerp_angle(th, game.player.th, dt * 0.25)
 			_try_fire(dt, game, ahead, 2.1, func(): game.fire_aimed(s, th, h, 20.0, 5, 0.16))
-	if _spin:
-		_spin.rotation.z += dt * (5.0 if kind == "weaver" else 1.6)
-		_spin.rotation.y += dt * (1.2 if kind == "mine" else 0.0)
-	var grow := minf(1.0, age / 0.35)
-	_model.scale = Vector3.ONE * 1.25 * ease(grow, 0.4)
-	for g in _geometry:
-		g.set_instance_shader_parameter("hit", _flash)
+	_animate(dt)
 
 
 func _hold_ahead(dt: float, game: Game, distance: float, hold_time: float) -> void:
@@ -88,8 +89,35 @@ func damage(amount: float) -> bool:
 	if not alive:
 		return false
 	hp -= amount
-	_flash = 1.0
+	_flash = 0.7
 	if hp <= 0.0:
 		alive = false
 		return true
 	return false
+
+
+func _animate(dt: float) -> void:
+	if _spin:
+		match kind:
+			"drone":
+				_spin.rotation += Vector3(1.3, 2.1, 0.0) * dt
+			"weaver":
+				_spin.rotation.z += dt * 7.0
+			"gunner":
+				_spin.rotation += Vector3(0.9, 1.4, 0.4) * dt
+			"mine":
+				_spin.rotation.z += dt * 2.4
+				_spin.rotation.y += dt * 1.1
+			"tank":
+				_spin.rotation += Vector3(0.3, 0.6, 0.0) * dt
+	if _orbit:
+		_orbit.rotation.z -= dt * 2.2
+	# Spawn: spiral in from nothing, then a gentle breathing pulse.
+	var grow := ease(minf(1.0, age / 0.45), 0.35)
+	var breathe := 1.0 + sin(age * 5.0 + _phase) * 0.07
+	_model.scale = Vector3.ONE * 1.25 * grow * breathe
+	_model.rotation.z = (1.0 - grow) * TAU
+	var pulse := 0.5 + 0.5 * sin(age * 6.0 + _phase)
+	for g in _geometry:
+		g.set_instance_shader_parameter("hit", _flash)
+		g.set_instance_shader_parameter("pulse", pulse)
