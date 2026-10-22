@@ -28,8 +28,7 @@ func resolve(dt: float) -> void:
 	for shot in g.projectiles.shots:
 		_shot_vs_enemies(shot)
 		_shot_vs_bosses(shot)
-	if nova_active():
-		_nova_clears_bullets()
+
 	_bullets_vs_player()
 	_enemies_vs_player()
 	_pickups_vs_player()
@@ -38,7 +37,7 @@ func resolve(dt: float) -> void:
 
 
 func nova_active() -> bool:
-	return g.projectiles.shots.any(func(s: Dictionary) -> bool: return s.pierce or s.get("clears", false))
+	return not g.donuts.is_empty()
 
 
 # ------------------------------------------------------------- player shots
@@ -121,15 +120,6 @@ static func _segment_hits(a: Vector3, b: Vector3, c: Vector3, r: float) -> bool:
 	var ab := b - a
 	var t := clampf((c - a).dot(ab) / maxf(ab.length_squared(), 1e-6), 0.0, 1.0)
 	return (a + ab * t).distance_to(c) < r
-
-
-func _nova_clears_bullets() -> void:
-	for nova: Dictionary in g.projectiles.shots.filter(func(s: Dictionary) -> bool: return s.pierce or s.get("clears", false)):
-		var reach := 0.45 if nova.pierce else 0.3
-		var removed := g.projectiles.clear_bullets(func(b: Dictionary) -> bool:
-			return absf(b.s - nova.s) < 6.0 and absf(Track.angle_diff(b.th, nova.th)) < reach)
-		g.score += 10 * removed.size()
-		_spark_bullets(removed)
 
 
 const MAX_BURST_SPARKS := 30

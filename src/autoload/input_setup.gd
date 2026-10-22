@@ -19,7 +19,7 @@ const HELP := [
 	["Acelerar (frente)", "W", "Analógico para cima"],
 	["Frear (trás)", "S", "Analógico para baixo"],
 	["Atirar (segurar)", "Botão esquerdo do mouse", "A / RT"],
-	["Espiral elétrica (segure e solte)", "Botão direito do mouse", "X / LT"],
+	["Anel de energia (segure e solte)", "Botão direito do mouse", "X / LT"],
 	["Especial: bomba (limpa a tela)", "Espaço", "Y / B"],
 	["Pausar", "Esc / P", "Start"],
 	["Tela cheia", "F11", "—"],

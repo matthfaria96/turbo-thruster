@@ -14,9 +14,6 @@ const STEER := 2.6
 const MAX_HULL := 4
 const MAX_WEAPON := 5
 const CHARGE_TIME := 0.5
-const SPIRAL_SHOTS := 12
-const SPIRAL_SPREAD := 0.55
-const SPIRAL_SPIN := 3.2
 const NOVA_COLOR := Color(0.55, 0.85, 1.0)
 const INVULN_TIME := 1.6
 const FIRE_RATE := [0.0, 8.0, 9.0, 10.0, 12.0, 12.0]
@@ -67,7 +64,7 @@ func _ready() -> void:
 	add_child(_model)
 	_flares = [_model.get_node("FlareL"), _model.get_node("FlareR")]
 	_muzzle = _model.get_node("Muzzle")
-	_orb = Meshes.aura(NOVA_COLOR, 1.0, 1.4)
+	_orb = Meshes.aura(NOVA_COLOR, 1.0, 1.1)
 	_orb.position = Vector3(0, 0.1, -1.6)
 	_orb.visible = false
 	_model.add_child(_orb)
@@ -145,26 +142,11 @@ func _update_charge(dt: float, held: bool) -> void:
 	_charge_sound = false
 
 
-## Charged release: a double helix of energy bolts that sweeps a band about
-## three times wider than the normal guns and erases enemy bullets it touches.
-func spiral_shots(at_s: float, at_th: float) -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	for i in SPIRAL_SHOTS:
-		var arm := 1.0 if i % 2 == 0 else -1.0
-		var k := float(i / 2) / float(SPIRAL_SHOTS / 2 - 1)
-		var offset := (k - 0.5) * 2.0 * SPIRAL_SPREAD
-		out.append({"s": at_s + i * 0.6, "ps": at_s, "th": at_th + offset, "h": H + 0.2,
-			"vs": speed + 120.0, "vth": arm * SPIRAL_SPIN * (0.6 + k * 0.4), "dmg": 4.0, "pierce": false,
-			"clears": true, "size": 1.2, "life": 0.85, "color": NOVA_COLOR.lerp(Color(1, 0.5, 1), k),
-			"swing": arm, "base_th": at_th + offset, "age": 0.0})
-	return out
-
-
 ## Energy ball growing at the nose while charging, particles sucked inward.
 func _animate_charge() -> void:
 	_orb.visible = charge > 0.02 and alive
 	var flick := 0.9 + 0.1 * sin(Time.get_ticks_msec() * (0.04 if charge >= 1.0 else 0.02))
-	_orb.scale = Vector3.ONE * (0.25 + charge * 0.85) * flick
+	_orb.scale = Vector3.ONE * (0.2 + charge * 0.6) * flick
 	_orb.set_instance_shader_parameter("tint", NOVA_COLOR.lerp(Color(1, 1, 1), charge * charge))
 	_suction.emitting = charge > 0.05 and alive
 	_suction.amount_ratio = clampf(charge, 0.2, 1.0)

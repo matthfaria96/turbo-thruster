@@ -215,9 +215,10 @@ func _process(delta: float) -> void:
 	geoms.update(dt, player)
 	if state in [State.PLAY, State.BOSS, State.PORTAL] and not _gallery:
 		combat.resolve(dt)
+		_step_donuts(dt)
 	_sync_transforms(dt)
 	_draw_lines()
-	_charge_fx(dt)
+	_charge_fx()
 	projectiles.render()
 	geoms.render()
 	tunnel.update_view(player.s)
@@ -563,60 +564,33 @@ func fire_ring(s: float, h: float, count: int, gap_th: float, gap: int, rel_spee
 			fire_bullet(s, wrapf(a, -PI, PI), h, rel_speed, 0.0)
 
 
-const CHAIN_TARGETS := 6
-const CHAIN_RANGE := 70.0
-const CHAIN_DAMAGE := 6.0
-const AURA_TIME := 0.6
-
-var _aura_t := 0.0
+var donuts: Array[Donut] = []
 
 
+## Right-click release: launch one energy ring down the ship's lane.
 func _on_nova(s: float, th: float) -> void:
-	for shot in player.spiral_shots(s, th):
-		projectiles.add_shot(shot)
-	var at := track.point(s, th, Player.H)
-	var ahead_at := track.point(s + 10.0, th, Player.H)
-	fx.sparks(ahead_at, Player.NOVA_COLOR, 36, 26.0, 1.2, 0.35)
-	fx.shockwave(ahead_at, Player.NOVA_COLOR, 3.0)
-	fx.shake = maxf(fx.shake, 0.3)
-	post.kick(0.4)
-	post.pulse(Player.NOVA_COLOR, 0.25)
-	_aura_t = AURA_TIME
-	_chain_lightning(at)
-	Sfx.play("nova")
+	var d := Donut.new()
+	add_child(d)
+	d.setup(self, s, th)
+	donuts.append(d)
+	fx.sparks(track.point(s, th, Player.H), Donut.COLOR, 18, 14.0, 0.7, 0.25)
+	post.kick(0.2)
+	Sfx.play("nova", -2.0)
 
 
-## Bolts jump from the ship to the nearest enemies ahead, damaging each.
-func _chain_lightning(from: Vector3) -> void:
-	var targets := enemies.filter(func(e: Enemy) -> bool:
-		var ahead := e.s - player.s
-		return e.alive and not e.invulnerable and not e.hidden and ahead > 0.0 and ahead < CHAIN_RANGE \
-			and absf(Track.angle_diff(e.th, player.th)) < 1.4)
-	targets.sort_custom(func(a: Enemy, b: Enemy) -> bool: return a.s < b.s)
-	var prev := from
-	for e: Enemy in targets.slice(0, CHAIN_TARGETS):
-		fx.lightning(prev, e.global_position, Color(0.75, 0.95, 1.0), 0.3, 0.1)
-		fx.sparks(e.global_position, Player.NOVA_COLOR, 10, 14.0, 0.8, 0.25)
-		combat.hit_enemy(e, CHAIN_DAMAGE)
-		prev = e.global_position
-	for b in bosses:
-		if b.core_hittable() and b.s - player.s < CHAIN_RANGE * 1.4:
-			fx.lightning(prev, b.global_position, Color(0.75, 0.95, 1.0), 0.3, 0.12)
-			if b.damage(CHAIN_DAMAGE * 1.5):
-				on_boss_killed(b)
+func _step_donuts(dt: float) -> void:
+	for d in donuts:
+		d.step(dt)
+	donuts = donuts.filter(func(d: Donut) -> bool: return not d.done)
 	enemies = enemies.filter(func(e: Enemy) -> bool: return e.alive)
 
 
-## Crackle while charging and an electric halo right after the release.
-func _charge_fx(dt: float) -> void:
-	_aura_t = maxf(0.0, _aura_t - dt)
-	if not player.alive:
+## Subtle crackle at the nose while the charge builds.
+func _charge_fx() -> void:
+	if not player.alive or player.charge < 0.5 or randf() > player.charge * 0.25:
 		return
 	var nose := player.global_position - player.global_basis.z * 1.5
-	if player.charge > 0.35 and randf() < player.charge * 0.6:
-		fx.zap(nose, 0.6 + player.charge * 1.2, Player.NOVA_COLOR, 1)
-	if _aura_t > 0.0:
-		fx.zap(player.global_position, 2.2, Color(0.8, 0.95, 1.0), 1)
+	fx.zap(nose, 0.4 + player.charge * 0.5, Player.NOVA_COLOR, 1)
 
 
 func _on_geom(pos: Vector3) -> void:

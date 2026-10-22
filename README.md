@@ -119,15 +119,15 @@ macOS e Linux**.
 | Ir para os lados | A / D | analógico / D-pad |
 | Acelerar (frente) / frear (trás) | W / S | analógico |
 | Atirar (segurar) | botão esquerdo do mouse | A / RT |
-| Espiral elétrica (segure ~0,5 s e solte) | botão direito do mouse | X / LT |
+| Anel de energia (segure ~0,5 s e solte) | botão direito do mouse | X / LT |
 | Especial: bomba (até 4 em estoque) | Espaço | Y / B |
 | Pausar | Esc / P | Start |
 | Tela cheia | F11 | — |
 
-Acelerar rende mais pontos. Frear deixa as balas inimigas mais lentas. A espiral
-elétrica carrega uma esfera de energia na ponta da nave; ao soltar, dispara uma
-hélice de 12 raios bem mais larga que o tiro normal, que apaga balas inimigas,
-e lança raios em cadeia em até 6 inimigos próximos.
+Acelerar rende mais pontos. Frear deixa as balas inimigas mais lentas. O anel de
+energia carrega uma esfera na ponta da nave; ao soltar, sai uma "rosquinha" de
+energia que cresce pelo túnel, apaga as balas inimigas no caminho e acerta no
+máximo 3 inimigos antes de se desfazer.
 
 ## Configurações
 
