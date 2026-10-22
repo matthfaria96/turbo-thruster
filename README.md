@@ -10,8 +10,11 @@ macOS e Linux**.
 
 ## O jogo
 
-- **Campanha com 8 setores.** Cada setor é uma corrida com ondas de inimigos
-  e termina com um **chefe**. Ao derrotá-lo, um **portal** se abre. Atravesse
+- **Campanha com 10 setores roteirizados.** Cada setor tem de 5 a 6 **atos**
+  com nome e regras próprias (escuridão, câmera girando, estroboscópio,
+  tremores, zona turbo com velocidade mínima, chuva de tiros), um trecho de
+  respiro com power-ups, mini-chefes de elite e, no fim, um **chefe**. Um
+  setor dura de 4 a 9 minutos e cada um é mais insano que o anterior. Ao derrotá-lo, um **portal** se abre. Atravesse
   o portal para que tudo exploda e o **placar do setor** apareça, com as opções
   **Próximo setor**, **Repetir** ou **Menu**.
 - **Multiplicador.** Inimigos destruídos soltam pequenos losangos verdes. Passe
@@ -25,6 +28,10 @@ macOS e Linux**.
 
   | Cápsula | Efeito |
   | --- | --- |
+  | **M** laranja | mísseis teleguiados por 10 s |
+  | **T** azul-claro | câmera lenta no mundo por 4 s (a nave segue normal) |
+  | **I** verde | ímã: atrai todos os geoms por 8 s |
+  | **L** ciano | laser contínuo por 6 s |
   | **P** verde | +1 nível de arma (até 5) |
   | **+** branco | repara 1 ponto do casco |
   | **E** azul | escudo hexagonal por 10 s (absorve um golpe) |
@@ -44,6 +51,13 @@ macOS e Linux**.
   | Mina | estrela | magenta | 6 | parada no túnel, explode ao contato |
   | Cubo | cubo | laranja | 10 | para à sua frente e atira em você |
   | Couraçado | icosaedro | dourado | 28 | blindado, tiro em leque, sempre solta upgrade |
+  | Espectro | losango | azul-claro | 5 | some e reaparece; o tiro carregado o revela |
+  | Divisor | cubo duplo | verde-água | 6 → 3 → 1 | divide-se em dois menores ao morrer |
+  | Escudeiro | hexágono | azul | 8 | protege os inimigos próximos: mate primeiro |
+  | Torre laser | torre | vermelho | 8 | avisa com uma linha fina e dispara um feixe na faixa |
+  | Serpente | corrente | verde-limão | 14 (cabeça) | só a cabeça leva dano; o corpo bloqueia tiros |
+  | **Anel pulsante** | anel | rosa | indestrutível | letal só no pulso: passe no intervalo |
+  | **Espinho** | estrela fixa | laranja | indestrutível | campo fixo com corredores |
   | **Muralha** | arco listrado | amarelo | indestrutível | fecha parte do túnel: passe pela abertura |
   | **Varredor** | lâminas | vermelho-claro | indestrutível | gira pelo túnel: passe entre as lâminas |
 
@@ -56,6 +70,30 @@ macOS e Linux**.
   propósito, para nunca competir com a ação.
 - **Nota por setor** (S/A/B/C), calculada pelos abates e pelo dano recebido.
   O recorde de cada setor fica salvo.
+
+- **Chefes únicos**: Sentinela, Hidra (3 cabeças), Leviatã (galáxia), Colosso
+  (placas de blindagem), Ciclone (puxa a nave), Espectro-Rei (some e solta
+  clones), Quimera (muda de forma a cada 25%), Fornalha (anéis em sequência),
+  Gêmeos (dois chefes) e o Coração do Toro (3 fases).
+- **Mecânicas de túnel por ato**: corredor que estreita e alarga (paredes de
+  energia), controles invertidos com a câmera de ponta-cabeça (Eclipse), calor
+  que queima o casco se você ficar parado (Forja), escuridão, tremores e zona
+  turbo.
+- **Raspão e onda limpa**: passar rente às balas dá pontos (a cada 3, +1 no
+  multiplicador); destruir uma onda inteira dá bônus. Três **medalhas** por
+  setor: Intocável, Exterminador e Multiplicador (x50).
+- **Modo Arcade**: túnel infinito, sem chefe nem portal. Cinco níveis por tempo
+  (Aquecimento, Engrenando, Intenso, Brutal e Impossível, depois de 6 min),
+  mini-chefe a cada 90 s, placar dos 5 melhores com iniciais estilo fliperama.
+  Pela pausa dá para encerrar a partida contando os pontos.
+- **HUD de cockpit** (números em display de 7 segmentos e textos em fonte de
+  terminal; mapa da rota vertical na borda direita): eliminações, pontos e multiplicador, distância percorrida
+  e cronômetro, ato atual com barra de progresso, velocímetro com o anel do
+  tiro carregado, medidores circulares de casco e arma, retícula de mira e
+  alerta de obstáculo à frente. O painel balança junto com a nave.
+- **Trilha sonora própria**, sintetizada (sem vocais), em ritmo crescente de
+  112 a 165 BPM: menu, cinco faixas de setor e uma do chefe. Para gerar de
+  novo: `tools/music/synth.py`.
 
 ## Controles
 
@@ -120,7 +158,6 @@ src/data/       setores e tipos de inimigo
 src/game/       túnel, nave, inimigos, chefe, projéteis, efeitos e fluxo do setor
 src/ui/         tema, menus, HUD e painéis
 src/shaders/    túnel, brilho neon, partículas, portal e vinheta
-legacy/         versão antiga em Python (apenas referência, ignorada pelo Godot)
 ```
 
 ## Créditos
@@ -128,5 +165,5 @@ legacy/         versão antiga em Python (apenas referência, ignorada pelo Godo
 Música e efeitos sonoros originais de **Kenta Cho** (Torus Trooper), sob a
 licença BSD. Veja `UPSTREAM_README.txt` e `LICENSE`.
 
-Fontes **Orbitron** e **Rajdhani** sob a SIL Open Font License (veja
-`assets/fonts/`).
+Fontes **Orbitron**, **Rajdhani**, **Share Tech Mono** e **DSEG** sob a SIL
+Open Font License (veja `assets/fonts/`).
