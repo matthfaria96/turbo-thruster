@@ -4,8 +4,11 @@ Objetivo: chegar a uma campanha de **10 setores** com dificuldade bem
 dosada, cada setor ensinando algo novo, e depois lançar o **Modo Arcade**
 (sobrevivência infinita com placar dos 5 melhores).
 
-Situação atual (v2.0): 8 setores, 7 inimigos, 2 obstáculos indestrutíveis,
-5 power-ups, chefe com 5 padrões de ataque, mapa da rota, multiplicador.
+Situação atual: **todas as etapas deste mapa foram implementadas**, inclusive o
+Modo Arcade. Os 10 setores roteirizados estão em `src/data/sector_scripts.gd`, os
+chefes em `src/data/boss_specs.gd`, os inimigos em `src/data/enemy_types.gd` e o
+Arcade em `src/game/arcade_director.gd`. Próximo passo: equilibrar a dificuldade
+com sessões de jogo reais.
 
 ---
 

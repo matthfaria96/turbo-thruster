@@ -1,19 +1,23 @@
 class_name Game
 extends Node3D
-## One sector run: intro → enemies → boss → portal → finale → results.
-## Everything (weapon level, hull, score) lives here and dies with the sector.
+## One run. Campaign: intro → scripted acts → boss → portal → finale →
+## results. Arcade: endless, difficulty rises with time until the ship dies.
+## Everything (weapon level, hull, score) lives here and dies with the run.
+## Collisions live in Combat, power-ups in PowerUps, end screens in RunEnd.
 
 signal request_menu
 signal request_level(index: int)
+signal request_arcade
 
 enum State { INTRO, PLAY, BOSS, PORTAL, FINALE, RESULTS, DEAD, OVER }
 
 const INTRO_TIME := 2.0
-const SPAWN_AHEAD := 150.0
 const FINALE_TIME := 2.2
 const MAX_MULTIPLIER := 99
 const ACTIVE_STATES := [State.INTRO, State.PLAY, State.BOSS, State.PORTAL]
+const SCORCH_LIMIT := 3.2
 
+var mode := "campaign"
 var level_index := 0
 var level: Dictionary
 var track: Track
@@ -22,36 +26,47 @@ var state_t := 0.0
 var score := 0
 var kills := 0
 var plan_kills := 0
+var plan_total := 0
 var multiplier := 1
 var max_multiplier := 1
 var hits_taken := 0
+var grazes := 0
+var waves_cleared := 0
 var elapsed := 0.0
+var time_scale := 1.0
+## Real seconds minus world seconds this frame (see Enemy.step).
+var slow_carry := 0.0
 
 var player: Player
-var boss: Boss
+var bosses: Array[Boss] = []
 var fx: Fx
 var projectiles: Projectiles
 var tunnel: Tunnel
+var lines: TrackLines
 var hud: Hud
 var camera: Camera3D
 var enemies: Array[Enemy] = []
 var pickups: Array[Pickup] = []
 var geoms: Geoms
 var backdrop: SpaceBackdrop
+var director: ActDirector
+var combat: Combat
+var powerups: PowerUps
+var run_end: RunEnd
 
 var _plan: Array[Dictionary] = []
-var _plan_total := 0
 var _cam_th := 0.0
-var _kills_since_drop := 0
+var _cam_roll := 0.0
 var _portal: Node3D
 var _portal_s := 0.0
 var _overlay: Control
 var _autoplay := false
 var _leaving := false
 var _start_s := 0.0
-
-
 var _gallery := false
+var _scorch_t := 0.0
+var _scorch_th := 0.0
+var _lane_t := 0.0
 
 
 ## Debug: freezes the ship and lines up every enemy type ahead of it.
@@ -59,15 +74,49 @@ func enable_gallery() -> void:
 	_gallery = true
 
 
-func setup(index: int, autoplay := false, start_s := 0.0) -> void:
+func setup(index: int, autoplay := false, start_s := 0.0, run_mode := "campaign") -> void:
+	mode = run_mode
 	level_index = index
-	level = Levels.get_level(index)
+	level = Levels.arcade_level() if is_arcade() else Levels.get_level(index)
 	_autoplay = autoplay
 	_start_s = start_s
 
 
+func is_arcade() -> bool:
+	return mode == "arcade"
+
+
 func _ready() -> void:
 	track = Track.new(level.curve, 1000 + level_index * 77)
+	_build_world()
+	combat = Combat.new(self)
+	powerups = PowerUps.new()
+	powerups.game = self
+	add_child(powerups)
+	run_end = RunEnd.new(self)
+	hud = Hud.new()
+	add_child(hud)
+	hud.build(level_index, level, is_arcade())
+	player.s = _start_s
+	if is_arcade():
+		director = ArcadeDirector.new()
+	else:
+		_plan = WavePlan.build(level, level_index).filter(func(p: Dictionary) -> bool: return p.s > _start_s)
+		plan_total = _plan.filter(Combat.is_killable_spawn).size()
+		combat.set_group_sizes(_plan)
+		director = ActDirector.new(level.acts)
+		hud.setup_route(track, level.length, _plan, WavePlan.act_starts(level.acts))
+	director.act_started.connect(_on_act_started)
+	if _gallery:
+		_spawn_gallery()
+	Sfx.play_music(level.music)
+	var heading := "MODO ARCADE" if is_arcade() else "SETOR %d" % (level_index + 1)
+	var sub := "Sobreviva" if is_arcade() else String(level.name).to_upper()
+	hud.announce(heading, sub, INTRO_TIME - 0.4)
+	_sync_transforms(0.0)
+
+
+func _build_world() -> void:
 	var env := WorldEnv.new()
 	env.tint = level.tint
 	add_child(env)
@@ -80,6 +129,9 @@ func _ready() -> void:
 	fx = Fx.new()
 	add_child(fx)
 	fx.ripple.connect(tunnel.add_ripple)
+	lines = TrackLines.new()
+	add_child(lines)
+	lines.setup(track)
 	geoms = Geoms.new()
 	add_child(geoms)
 	geoms.setup(track)
@@ -90,35 +142,27 @@ func _ready() -> void:
 	player = Player.new()
 	add_child(player)
 	player.nova_fired.connect(_on_nova)
+	player.lane_bump.connect(_on_lane_bump)
 	camera = Camera3D.new()
 	camera.fov = 78.0
 	camera.near = 0.1
 	camera.far = 420.0
 	add_child(camera)
 	camera.current = true
-	hud = Hud.new()
-	add_child(hud)
-	hud.build(level_index, level)
-	_plan = WavePlan.build(level, level_index)
-	player.s = _start_s
-	_plan = _plan.filter(func(p: Dictionary) -> bool: return p.s > _start_s)
-	_plan_total = _plan.filter(func(p: Dictionary) -> bool:
-		return not EnemyTypes.get_type(p.kind).get("invulnerable", false)).size()
-	hud.setup_route(track, level.length, _plan)
-	if _gallery:
-		_plan.clear()
-		player.frozen = true
-		var kinds := ["gunner", "tank", "seeker", "mine", "weaver", "drone", "swarm"]
-		for i in kinds.size():
-			spawn_enemy(kinds[i], _start_s + 14.0 + i * 7.0, -1.1 + i * 0.37, 0.0)
-		spawn_enemy("rotor", _start_s + 70.0, 0.0, 1.0)
-		spawn_enemy("barrier", _start_s + 95.0, PI * 0.6, 1.4)
-		for e in enemies:
-			e.age = 5.0
-			e.damage(e.max_hp * 0.7)
-	Sfx.play_music(level.music)
-	hud.announce("SETOR %d" % (level_index + 1), String(level.name).to_upper(), INTRO_TIME - 0.4)
-	_sync_transforms(0.0)
+
+
+func _spawn_gallery() -> void:
+	_plan.clear()
+	player.frozen = true
+	var kinds := ["gunner", "tank", "seeker", "phantom", "splitter", "warden", "laser", "serpent", "drone", "swarm"]
+	for i in kinds.size():
+		spawn_enemy(kinds[i], _start_s + 14.0 + i * 6.0, -1.3 + i * 0.3, 0.0)
+	spawn_enemy("rotor", _start_s + 80.0, 0.0, 1.0)
+	spawn_enemy("pulse_ring", _start_s + 95.0, 0.0, 0.0)
+	spawn_enemy("barrier", _start_s + 110.0, PI * 0.6, 1.4)
+	for e in enemies:
+		e.age = 5.0
+		e.damage(e.max_hp * 0.6)
 
 
 func _notification(what: int) -> void:
@@ -137,29 +181,42 @@ func _process(delta: float) -> void:
 	var dt := minf(delta, 1.0 / 30.0)
 	var playing := state in ACTIVE_STATES and not get_tree().paused
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if playing else Input.MOUSE_MODE_VISIBLE
+	var world_dt := dt * time_scale
+	slow_carry = dt - world_dt
 	state_t += dt
 	_step_state(dt)
+	director.update(player.s, dt)
+	_apply_act_mods(dt)
 	var shots := player.step(dt, _read_input())
-	for shot in shots:
-		projectiles.add_shot(shot)
+	if not powerups.laser_active():
+		for shot in shots:
+			projectiles.add_shot(shot)
 	if state in ACTIVE_STATES and not _gallery:
-		_spawn_from_plan()
-	_step_entities(dt)
-	projectiles.update(dt, player.s)
+		_spawn_next()
+	_step_entities(world_dt)
+	powerups.update(dt)
+	projectiles.update(dt, time_scale, player.s, player.speed)
 	geoms.update(dt, player)
 	if state in [State.PLAY, State.BOSS, State.PORTAL] and not _gallery:
-		_resolve_hits()
+		combat.resolve(dt)
 	_sync_transforms(dt)
+	_draw_lines()
 	projectiles.render()
 	geoms.render()
 	tunnel.update_view(player.s)
 	backdrop.follow(camera, dt)
-	hud.refresh({"score": score, "multiplier": multiplier, "progress": clampf(player.s / level.length, 0.0, 1.0),
-		"weapon": player.weapon, "hull": maxi(player.hull, 0), "speed": player.speed,
-		"shield": player.shield_t, "rapid": player.rapid_t, "distance": player.s,
-		"charge": player.charge}, dt)
-	if boss:
-		hud.set_boss_health(boss.health_ratio())
+	hud.refresh(_hud_state(), dt)
+
+
+func _hud_state() -> Dictionary:
+	return {"score": score, "multiplier": multiplier, "weapon": player.weapon,
+		"hull": maxi(player.hull, 0), "speed": player.speed, "shield": player.shield_t,
+		"rapid": player.rapid_t, "distance": player.s, "charge": player.charge,
+		"kills": plan_kills if not is_arcade() else kills, "total": plan_total, "length": level.length,
+		"act": director.index, "acts": director.count, "act_title": director.title,
+		"reticle": _reticle_screen_pos(), "bank": player.bank_amount(), "hazard": _hazard_ahead(),
+		"elapsed": elapsed, "arcade": is_arcade(), "boss_ratio": boss_ratio(),
+		"slow": time_scale < 0.99, "power": powerups.active_label()}
 
 
 # --------------------------------------------------------------- state flow
@@ -172,15 +229,18 @@ func _step_state(dt: float) -> void:
 				hud.announce("VAI!", "", 0.6)
 		State.PLAY:
 			elapsed += dt
-			if player.s >= level.length:
+			if is_arcade():
+				run_end.add_survival_score(dt)
+			elif player.s >= level.length:
 				_start_boss()
 		State.BOSS:
 			elapsed += dt
-			if boss.done:
+			if bosses.all(func(b: Boss) -> bool: return b.done):
 				_open_portal()
 		State.PORTAL:
 			elapsed += dt
 			_portal.get_node("Ring").rotation.z += dt * 1.5
+			_portal.get_node("Inner").rotation.z -= dt * 2.5
 			if player.s >= _portal_s:
 				_start_finale()
 		State.FINALE:
@@ -190,7 +250,12 @@ func _step_state(dt: float) -> void:
 			tunnel.set_flash(maxf(0.0, 0.35 - state_t * 0.4))
 		State.DEAD:
 			if state_t >= 1.6:
-				_show_game_over()
+				_set_state(State.OVER)
+				run_end.show_game_over()
+
+
+func set_state(next: State) -> void:
+	_set_state(next)
 
 
 func _set_state(next: State) -> void:
@@ -214,11 +279,14 @@ func _read_input() -> Dictionary:
 ## Simple bot used by the screenshot/smoke-test harness.
 func _autoplay_input() -> Dictionary:
 	var target := player.th
-	if boss and boss.alive:
-		target = boss.th
+	var live := bosses.filter(func(b: Boss) -> bool: return b.alive)
+	if not live.is_empty():
+		target = (live[0] as Boss).th
 	elif not enemies.is_empty():
 		target = enemies[0].th
 	var x := clampf(Track.angle_diff(target, player.th) * 3.0, -1.0, 1.0)
+	if player.invert_x:
+		x = -x
 	return {"x": x, "y": 0.6, "fire": state != State.INTRO, "charge": false}
 
 
@@ -226,33 +294,177 @@ func enemies_may_fire() -> bool:
 	return state in [State.PLAY, State.BOSS]
 
 
+func boss_active() -> bool:
+	return not bosses.is_empty()
+
+
+func boss_ratio() -> float:
+	if bosses.is_empty():
+		return -1.0
+	var hp := 0.0
+	var total := 0.0
+	for b in bosses:
+		hp += maxf(b.hp, 0.0)
+		total += b.max_hp
+	return clampf(hp / maxf(total, 1.0), 0.0, 1.0)
+
+
 # ----------------------------------------------------------------- spawning
 
-func _spawn_from_plan() -> void:
-	while not _plan.is_empty() and _plan[0].s <= player.s + SPAWN_AHEAD:
+func _spawn_next() -> void:
+	if is_arcade():
+		if state == State.PLAY:
+			var batch := (director as ArcadeDirector).next_spawns(player.s, elapsed)
+			combat.set_group_sizes(batch)
+			for spec in batch:
+				_spawn_spec(spec, spec.s)
+		return
+	var ahead := director.get_value("spawn_ahead")
+	while not _plan.is_empty() and _plan[0].s <= player.s + ahead:
 		var spec: Dictionary = _plan.pop_front()
-		spawn_enemy(spec.kind, maxf(spec.s, player.s + 60.0), spec.th, spec.phase, true)
+		_spawn_spec(spec, maxf(spec.s, player.s + minf(60.0, ahead * 0.7)))
 
 
-func spawn_enemy(kind: String, s: float, th: float, phase: float, from_plan := false) -> void:
+func _spawn_spec(spec: Dictionary, at: float) -> void:
+	var kind := String(spec.kind)
+	if kind.begins_with("pickup_"):
+		powerups.spawn_pickup(kind.trim_prefix("pickup_"), at, spec.th)
+		return
+	var e := spawn_enemy(kind, at, spec.th, spec.phase, true)
+	combat.register_group(e, int(spec.get("group", -1)))
+	if spec.get("elite", false):
+		e.make_elite()
+	if kind == "serpent":
+		for k in int(spec.get("segments", 8)):
+			var body := spawn_enemy("serpent_body", at + (k + 1) * 2.0, spec.th, 0.0)
+			body.leader = e
+			body.slot = k + 1
+
+
+func spawn_enemy(kind: String, s: float, th: float, phase: float, from_plan := false) -> Enemy:
 	var e := Enemy.new()
-	e.setup(kind, s, th, phase, 1.0 + level_index * 0.08)
+	var heat := director.get_value("heat") if director else 1.0
+	e.setup(kind, s, th, phase, (1.0 + maxi(level_index, 0) * 0.08) * heat)
 	e.from_plan = from_plan
 	add_child(e)
 	enemies.append(e)
+	return e
 
 
 func _step_entities(dt: float) -> void:
 	for e in enemies:
 		e.step(dt, self)
-	var passed := enemies.filter(func(e: Enemy) -> bool: return e.s < player.s - 10.0)
-	for e: Enemy in passed:
+	var gone := enemies.filter(func(e: Enemy) -> bool: return e.s < player.s - 10.0 or not e.alive)
+	for e: Enemy in gone:
+		if e.alive:
+			combat.on_escaped(e)
+		elif e.kind == "serpent_body":
+			fx.explosion(e.global_position, e.spec.color, 0.8)
 		e.queue_free()
-	enemies = enemies.filter(func(e: Enemy) -> bool: return e.alive and e.s >= player.s - 10.0)
+	enemies = enemies.filter(func(e: Enemy) -> bool: return not (e in gone))
 	for p in pickups:
 		p.step(dt, player)
-	if boss:
-		boss.step(dt, self)
+	for b in bosses:
+		b.step(dt, self)
+
+
+# ------------------------------------------------------------------- acts
+
+func _on_act_started(index: int, title: String) -> void:
+	if state != State.PLAY or (index == 0 and not is_arcade()):
+		return
+	var heading := "NÍVEL %d" % (index + 1) if is_arcade() else "ATO %d" % (index + 1)
+	hud.announce(heading, title.to_upper(), 1.8, UiStyle.GOLD)
+	Sfx.play("alert", -10.0, 1.3)
+	if is_arcade():
+		Sfx.play_music((director as ArcadeDirector).music_for_stage())
+
+
+func _apply_act_mods(dt: float) -> void:
+	if state == State.PLAY:
+		player.min_speed_override = director.get_value("speed_floor")
+	tunnel.set_brightness(director.get_value("brightness"))
+	Sfx.set_intensity(1.0 if boss_active() or is_arcade() else director.intensity())
+	if state in [State.INTRO, State.PLAY, State.BOSS]:
+		tunnel.set_flash(director.strobe_pulse() * 0.08)
+	_update_lane(dt)
+	if state != State.PLAY:
+		return
+	if director.quake_due(dt):
+		var at := track.point(player.s + randf_range(20.0, 60.0), randf_range(-PI, PI), 0.0)
+		tunnel.add_ripple(at, 2.2)
+		fx.shake = maxf(fx.shake, 0.35)
+		Sfx.play("middle", -14.0, 0.5)
+	_update_scorch(dt)
+
+
+func _update_lane(dt: float) -> void:
+	_lane_t += dt
+	# Lane walls only exist during the scripted acts, never in boss fights.
+	var lane := director.get_value("lane") if state == State.PLAY else PI
+	var half := lane + sin(_lane_t * 0.9) * (director.get_value("lane_pulse") if state == State.PLAY else 0.0)
+	player.lane_half = clampf(half, 0.45, PI)
+	if player.lane_half < PI - 0.01:
+		player.lane_center = wrapf(sin(_lane_t * 0.21) * 1.4, -PI, PI)
+
+
+## "Scorch" acts punish standing still: move or the hull burns.
+func _update_scorch(dt: float) -> void:
+	if director.get_value("scorch") < 0.5:
+		_scorch_t = 0.0
+		return
+	if absf(Track.angle_diff(player.th, _scorch_th)) > 0.35:
+		_scorch_th = player.th
+		_scorch_t = 0.0
+		return
+	_scorch_t += dt
+	if _scorch_t > SCORCH_LIMIT * 0.55 and fmod(_scorch_t, 0.5) < dt:
+		hud.announce("", "CALOR! MOVA-SE!", 0.5, UiStyle.DANGER)
+	if _scorch_t > SCORCH_LIMIT:
+		_scorch_t = 0.0
+		combat.hurt_player(player.global_position)
+
+
+func _on_lane_bump() -> void:
+	if fmod(elapsed, 0.15) < 0.05:
+		fx.sparks(player.global_position, level.tint.lightened(0.4), 6, 10.0, 0.6, 0.2)
+	fx.shake = maxf(fx.shake, 0.08)
+
+
+func _draw_lines() -> void:
+	if player.lane_half < PI - 0.01:
+		var wall: Color = (level.tint as Color).lightened(0.35)
+		for side in [-1.0, 1.0]:
+			var a: float = player.lane_center + side * (player.lane_half + 0.08)
+			lines.line("lane", wall, player.s + 4.0, player.s + 170.0, a, 0.05, 0.12, 1.5)
+	for e in enemies:
+		if e.kind == "laser" and e.beam_state > 0:
+			var firing := e.beam_state == 2
+			lines.line("beam_fire" if firing else "beam_warn", Color(1, 0.2, 0.2) if firing else Color(1, 0.4, 0.4),
+				player.s + 1.0, e.s, e.th, Player.H, 0.55 if firing else 0.05, 3.0 if firing else 1.5)
+	powerups.draw_laser()
+	lines.flush()
+
+
+## Screen position of the aim point straight ahead of the ship.
+func _reticle_screen_pos() -> Vector2:
+	var aim := track.point(player.s + 28.0, player.th, Player.H)
+	if camera.is_position_behind(aim):
+		return Vector2(-1000, -1000)
+	return camera.unproject_position(aim)
+
+
+## Is an indestructible obstacle or a laser lane coming up for the ship?
+func _hazard_ahead() -> bool:
+	for e in enemies:
+		var ahead := e.s - player.s
+		if ahead < 0.0 or ahead > 70.0:
+			continue
+		if e.kind == "laser" and e.beam_state > 0 and absf(Track.angle_diff(player.th, e.th)) < 0.25:
+			return true
+		if e.invulnerable and (e.kind in ["rotor", "pulse_ring"] or e.blocks_shot(player.th)):
+			return true
+	return false
 
 
 func _sync_transforms(dt: float) -> void:
@@ -265,8 +477,8 @@ func _sync_transforms(dt: float) -> void:
 			e.global_transform = track.pose(e.s, e.th, e.h)
 	for p in pickups:
 		p.global_transform = track.pose(p.s, p.th, p.h)
-	if boss:
-		boss.global_transform = track.pose(boss.s, boss.th, boss.h)
+	for b in bosses:
+		b.global_transform = track.pose(b.s, b.th, b.h)
 	_update_camera(dt)
 
 
@@ -275,7 +487,14 @@ func _update_camera(dt: float) -> void:
 	var eye := track.point(player.s - 7.0, _cam_th, Track.RADIUS - 3.0)
 	var target := track.point(player.s + 26.0, _cam_th, Track.RADIUS - 3.4)
 	var up := -Track.radial(track.frame(player.s), _cam_th)
+	var flip := director.get_value("flip") if state == State.PLAY else 0.0
+	var roll_target := director.roll() + flip * PI - player.bank_amount() * 0.12
+	_cam_roll = lerpf(_cam_roll, roll_target, minf(1.0, dt * 3.0)) if dt > 0.0 else roll_target
+	up = up.rotated((target - eye).normalized(), _cam_roll)
 	camera.look_at_from_position(eye, target, up)
+	# Upside down, steering is mirrored so it stays screen-relative; the
+	# swap happens exactly when the camera passes 90°.
+	player.invert_x = cos(_cam_roll - director.roll()) < 0.0
 	camera.fov = lerpf(camera.fov, 78.0 + (player.speed - Player.BASE_SPEED) * 0.4, minf(1.0, dt * 4.0))
 	var amount := fx.shake if bool(Save.settings.shake) else 0.0
 	camera.h_offset = randf_range(-1.0, 1.0) * amount * 0.6
@@ -286,7 +505,8 @@ func _update_camera(dt: float) -> void:
 # ------------------------------------------------------------------ firing
 
 func fire_bullet(s: float, th: float, h: float, rel_speed: float, vth: float) -> void:
-	projectiles.add_bullet(s, th, h, player.speed - rel_speed, vth)
+	var speed_k := director.get_value("heat") if director else 1.0
+	projectiles.add_bullet(s, th, h, player.speed - rel_speed * sqrt(speed_k), vth)
 
 
 ## Shoots `count` bullets aimed at the player, spread by `spread` radians.
@@ -315,249 +535,54 @@ func _on_nova(s: float, th: float) -> void:
 	Sfx.play("nova")
 
 
-# --------------------------------------------------------------- collisions
-
-func _resolve_hits() -> void:
-	for shot in projectiles.shots:
-		_shot_vs_targets(shot)
-	if shot_nova_active():
-		_nova_clears_bullets()
-	_bullets_vs_player()
-	_enemies_vs_player()
-	_pickups_vs_player()
-	enemies = enemies.filter(func(e: Enemy) -> bool: return e.alive)
-
-
-func shot_nova_active() -> bool:
-	return projectiles.shots.any(func(s: Dictionary) -> bool: return s.pierce)
-
-
-func _shot_vs_targets(shot: Dictionary) -> void:
-	for e in enemies:
-		if not e.alive or shot.get("dead", false):
-			continue
-		if e.uses_frame():
-			if e.blocks_shot(shot.th) and e.s >= shot.ps - 0.5 and e.s <= shot.s + 0.5:
-				fx.sparks(track.point(e.s, shot.th, shot.h), e.spec.color, 4, 10.0, 0.6, 0.2)
-				shot.dead = true
-			continue
-		if _swept_hit(shot, e.s, e.th, e.h, e.spec.radius):
-			if e.damage(shot.dmg):
-				_on_enemy_killed(e)
-			else:
-				fx.sparks(e.global_position, e.spec.color, 8, 14.0, 0.8, 0.25)
-				Sfx.play("hit", -10.0)
-			if not shot.pierce:
-				shot.dead = true
-	if boss and boss.alive and not shot.get("dead", false) and _swept_hit(shot, boss.s, boss.th, boss.h, boss.radius):
-		if not shot.pierce or not shot.has("hit_boss"):
-			if boss.damage(shot.dmg):
-				_on_boss_killed()
-			fx.sparks(track.point(boss.s - 2.5, shot.th, shot.h), boss.color, 8, 16.0, 0.9, 0.25)
-			Sfx.play("hit", -10.0)
-		shot["hit_boss"] = true
-		if not shot.pierce:
-			shot.dead = true
-
-
-func _swept_hit(shot: Dictionary, s: float, th: float, h: float, radius: float) -> bool:
-	var r: float = radius + shot.size * 0.5
-	if s < shot.ps - r or s > shot.s + r:
-		return false
-	var arc := absf(Track.angle_diff(shot.th, th)) * (Track.RADIUS - h)
-	return arc < r and absf(shot.h - h) < r + 0.6
-
-
-func _nova_clears_bullets() -> void:
-	var novas := projectiles.shots.filter(func(s: Dictionary) -> bool: return s.pierce)
-	for nova: Dictionary in novas:
-		var removed := projectiles.clear_bullets(func(b: Dictionary) -> bool:
-			return absf(b.s - nova.s) < 6.0 and absf(Track.angle_diff(b.th, nova.th)) < 0.45)
-		for b in removed:
-			fx.sparks(track.point(b.s, b.th, b.h), EnemyTypes.BULLET_COLOR, 5, 10.0, 0.6, 0.25)
-			score += 10
-
-
-func _bullets_vs_player() -> void:
-	if player.invuln > 0.0 or not player.alive:
-		return
-	for b in projectiles.bullets:
-		if not b.dead and Track.distance(b.s, b.th, b.h, player.s, player.th, Player.H) < Projectiles.BULLET_RADIUS + 0.35:
-			b.dead = true
-			_hurt_player()
-			return
-
-
-func _enemies_vs_player() -> void:
-	var vulnerable := player.invuln <= 0.0 and player.alive
-	for e in enemies:
-		if not e.alive or not e.touches(player) or not vulnerable:
-			continue
-		if e.invulnerable:
-			fx.sparks(player.global_position, e.spec.color, 20, 18.0, 1.0, 0.35)
-		elif e.damage(4.0):
-			_on_enemy_killed(e)
-		_hurt_player()
-		vulnerable = false
-
-
-func _pickups_vs_player() -> void:
-	var taken := pickups.filter(func(p: Pickup) -> bool:
-		return Track.distance(p.s, p.th, p.h, player.s, player.th, Player.H) < Pickup.COLLECT_RADIUS)
-	for p: Pickup in taken:
-		_collect(p)
-		p.queue_free()
-	var missed := pickups.filter(func(p: Pickup) -> bool: return p.s < player.s - 8.0)
-	for p: Pickup in missed:
-		p.queue_free()
-	pickups = pickups.filter(func(p: Pickup) -> bool: return not (p in taken) and not (p in missed))
-
-
-func _hurt_player() -> void:
-	hits_taken += 1
-	var died := player.take_hit()
-	fx.explosion(player.global_position, EnemyTypes.PLAYER_COLOR, 0.8)
-	fx.shake = 0.7
-	hud.damage_pulse()
-	multiplier = maxi(1, multiplier / 2)
-	if died:
-		_on_player_died()
-		return
-	Sfx.play("hit", 0.0, 0.7)
-	hud.announce("", "CASCO DANIFICADO — ARMA NV %d" % player.weapon, 0.8, UiStyle.DANGER)
-
-
-# ------------------------------------------------------------ kills, drops
-
-func _speed_mult() -> float:
-	return 1.0 + maxf(0.0, player.speed - Player.BASE_SPEED) / 40.0
-
-
-func _on_enemy_killed(e: Enemy) -> void:
-	kills += 1
-	if e.from_plan:
-		plan_kills += 1
-	var points := int(e.spec.score * multiplier * _speed_mult())
-	score += points
-	var big := e.kind == "tank"
-	fx.explosion(e.global_position, e.spec.color, 1.8 if big else 1.0)
-	fx.popup(e.global_position + Vector3.UP * 0.5, "+%d" % points, e.spec.color)
-	Sfx.play("middle" if big else "small", -3.0, randf_range(0.9, 1.1))
-	_maybe_drop(e)
-	geoms.drop(e.s, e.th, e.h, 2 + int(e.spec.hp / 3.0))
-	e.queue_free()
-
-
-func _maybe_drop(e: Enemy) -> void:
-	_kills_since_drop += 1
-	var kind := ""
-	if e.kind == "tank":
-		kind = "weapon" if player.weapon < Player.MAX_WEAPON else _random_powerup()
-	elif _kills_since_drop >= 8 or randf() < 0.035:
-		kind = _random_powerup()
-	if kind == "":
-		return
-	_kills_since_drop = 0
-	var p := Pickup.new()
-	p.setup(kind, e.s, e.th)
-	add_child(p)
-	pickups.append(p)
-
-
-## Weighted toward what the player needs right now.
-func _random_powerup() -> String:
-	var table := {"weapon": 4.0 if player.weapon < Player.MAX_WEAPON else 0.0,
-		"repair": 3.0 if player.hull < Player.MAX_HULL else 0.3,
-		"shield": 2.0, "rapid": 2.0, "bomb": 1.2}
-	var total := 0.0
-	for k: String in table:
-		total += table[k]
-	var roll := randf() * total
-	for k: String in table:
-		roll -= table[k]
-		if roll <= 0.0:
-			return k
-	return "rapid"
-
-
-func _collect(p: Pickup) -> void:
-	Sfx.play("pickup", -2.0)
-	fx.sparks(p.global_position, p.color(), 30, 16.0, 1.0, 0.4)
-	fx.shockwave(p.global_position, p.color(), 3.0)
-	match p.kind:
-		"shield":
-			player.shield_t = 10.0
-			hud.announce("", "ESCUDO ATIVO", 1.0, p.color())
-			return
-		"rapid":
-			player.rapid_t = 9.0
-			hud.announce("", "RAJADA!", 1.0, p.color())
-			return
-		"bomb":
-			_bomb()
-			return
-	if p.kind == "weapon":
-		if player.upgrade_weapon():
-			hud.announce("", "ARMA NÍVEL %d" % player.weapon, 1.0, UiStyle.GOOD)
-		else:
-			score += 2000
-			fx.popup(p.global_position, "+2000", p.color())
-	else:
-		if player.repair():
-			hud.announce("", "CASCO REPARADO", 1.0, UiStyle.ACCENT)
-		else:
-			score += 1000
-			fx.popup(p.global_position, "+1000", p.color())
-
-
-## Clears every bullet and heavily damages everything ahead.
-func _bomb() -> void:
-	hud.announce("BOMBA", "", 0.8, EnemyTypes.powerup("bomb").color)
-	Sfx.play("boss", -4.0, 1.3)
-	fx.shake = 0.8
-	var at := track.point(player.s + 6.0, player.th, 3.0)
-	fx.shockwave(at, Color(1, 0.6, 1), 7.0)
-	fx.sparks(at, Color(1, 0.6, 1), 80, 40.0, 2.0, 0.6)
-	tunnel.add_ripple(at, 2.5)
-	hud.set_flash(0.35)
-	create_tween().tween_method(hud.set_flash, 0.35, 0.0, 0.4)
-	_explode_all_bullets()
-	for e in enemies:
-		if e.alive and e.s < player.s + 110.0 and e.damage(10.0):
-			_on_enemy_killed(e)
-	enemies = enemies.filter(func(e: Enemy) -> bool: return e.alive)
-	if boss and boss.alive and boss.damage(boss.max_hp * 0.08):
-		_on_boss_killed()
+func _on_geom(pos: Vector3) -> void:
+	multiplier = mini(MAX_MULTIPLIER, multiplier + 1)
+	max_multiplier = maxi(max_multiplier, multiplier)
+	fx.sparks(pos, EnemyTypes.GEOM_COLOR, 4, 8.0, 0.5, 0.2)
+	Sfx.play("shot", -18.0, 2.2)
 
 
 # --------------------------------------------------------- boss and portal
 
 func _start_boss() -> void:
 	_set_state(State.BOSS)
-	boss = Boss.new()
-	boss.setup(level, level_index, player.s + 110.0, player.th)
-	add_child(boss)
-	hud.show_boss(boss.title)
-	hud.announce("ALERTA", "CHEFE: " + boss.title.to_upper(), 2.2, UiStyle.DANGER)
+	player.min_speed_override = 0.0
+	Sfx.play_music("boss")
+	var spec := BossSpecs.for_level(level_index)
+	var twins: bool = spec.get("twins", false)
+	for i in (2 if twins else 1):
+		var b := Boss.new()
+		b.setup(level, level_index, player.s + 110.0 + i * 8.0, player.th + i * PI, 0.5 if twins else 1.0, i * PI)
+		add_child(b)
+		bosses.append(b)
+	hud.show_boss(level.boss)
+	hud.announce("ALERTA", "CHEFE: " + String(level.boss).to_upper(), 2.2, UiStyle.DANGER)
 	Sfx.play("alert")
 
 
-func _on_boss_killed() -> void:
+func on_boss_killed(_b: Boss) -> void:
+	if bosses.any(func(b: Boss) -> bool: return b.alive):
+		hud.announce("", "UM A MENOS!", 1.0, UiStyle.GOLD)
+		return
 	score += int(5000 * (1.0 + level_index * 0.25))
 	fx.shake = 0.6
-	_explode_all_bullets()
+	combat.explode_all_bullets()
 	for e in enemies:
+		e.shielded = false
+		e.hidden = false
 		if e.alive and e.damage(999.0):
-			_on_enemy_killed(e)
-	enemies.clear()
+			combat.on_enemy_killed(e)
+	enemies = enemies.filter(func(e: Enemy) -> bool: return e.alive)
 
 
 func _open_portal() -> void:
 	_set_state(State.PORTAL)
 	hud.hide_boss()
-	_portal_s = boss.s + 40.0
-	boss.queue_free()
-	boss = null
+	_portal_s = bosses[0].s + 40.0
+	for b in bosses:
+		b.queue_free()
+	bosses.clear()
+	player.external_drift = 0.0
 	_portal = Meshes.portal()
 	add_child(_portal)
 	_portal.global_transform = track.pose(_portal_s, 0.0, Track.RADIUS)
@@ -569,7 +594,7 @@ func _start_finale() -> void:
 	_set_state(State.FINALE)
 	player.min_speed_override = 70.0
 	Sfx.play("boss")
-	_explode_all_bullets()
+	combat.explode_all_bullets()
 	for e in enemies:
 		fx.explosion(e.global_position, e.spec.color, 1.4)
 		e.queue_free()
@@ -591,105 +616,57 @@ func _step_finale(dt: float) -> void:
 	tunnel.set_flash(clampf(state_t * 0.25, 0.0, 0.35))
 	hud.set_flash(clampf((state_t - 1.0) / 0.9, 0.0, 1.0))
 	if state_t >= FINALE_TIME:
-		_show_results()
+		_set_state(State.RESULTS)
+		player.min_speed_override = 0.0
+		run_end.show_results()
 
 
-func _explode_all_bullets() -> void:
-	var removed := projectiles.clear_bullets(func(_b: Dictionary) -> bool: return true)
-	for b in removed:
-		fx.sparks(track.point(b.s, b.th, b.h), EnemyTypes.BULLET_COLOR, 5, 10.0, 0.6, 0.25)
-
-
-# ---------------------------------------------------------------- results
-
-func _rank(kill_ratio: float) -> String:
-	if kill_ratio >= 0.85 and hits_taken == 0:
-		return "S"
-	if kill_ratio >= 0.7 and hits_taken <= 1:
-		return "A"
-	if kill_ratio >= 0.45:
-		return "B"
-	return "C"
-
-
-func _show_results() -> void:
-	_set_state(State.RESULTS)
-	player.min_speed_override = 0.0
-	var kill_ratio := minf(1.0, plan_kills / float(maxi(_plan_total, 1)))
-	var hull_bonus := player.hull * 1500
-	var par_time: float = level.length / Player.BASE_SPEED + 45.0
-	var time_bonus := int(maxf(0.0, par_time - elapsed) * 60.0)
-	var total := score + hull_bonus + time_bonus
-	var rank := _rank(kill_ratio)
-	var is_best := Save.record_result(level_index, total, rank)
-	var last := Levels.is_last(level_index)
-	var rows := [
-		["Pontos", Hud._format_int(score)],
-		["Abates", "%d / %d" % [plan_kills, _plan_total]],
-		["Maior multiplicador", "x%d" % max_multiplier],
-		["Bônus de casco", "+" + Hud._format_int(hull_bonus)],
-		["Bônus de tempo (%ds)" % int(elapsed), "+" + Hud._format_int(time_bonus)],
-		["Total", Hud._format_int(total), UiStyle.TEXT],
-		["Classificação", rank, UiStyle.rank_color(rank), true],
-	]
-	var buttons: Array = []
-	if not last:
-		buttons.append(["Próximo setor  ▸", func() -> void: _leave(level_index + 1)])
-	buttons.append(["Repetir setor", func() -> void: _leave(level_index)])
-	buttons.append(["Menu principal", func() -> void: _leave(-1)])
-	var heading := "CAMPANHA CONCLUÍDA" if last else "SETOR CONCLUÍDO"
-	var sub := ("NOVO RECORDE!  " if is_best else "") + "Setor %d · %s" % [level_index + 1, level.name]
-	_show_overlay(Overlay.create(heading, sub, rows, buttons, UiStyle.GOOD))
-
-
-func _on_player_died() -> void:
+func on_player_died() -> void:
 	_set_state(State.DEAD)
 	Sfx.play("ship")
 	fx.explosion(player.global_position, EnemyTypes.PLAYER_COLOR, 2.5)
 	fx.explosion(player.global_position, Color(1, 1, 1), 1.5)
 	fx.shake = 1.0
 	player.min_speed_override = 0.0
+	player.external_drift = 0.0
 
 
-func _show_game_over() -> void:
-	_set_state(State.OVER)
-	var rows := [
-		["Pontos", Hud._format_int(score)],
-		["Distância", "%d%%" % int(clampf(player.s / level.length, 0.0, 1.0) * 100.0)],
-		["Abates", str(kills)],
-	]
-	var buttons := [
-		["Tentar de novo", func() -> void: _leave(level_index)],
-		["Menu principal", func() -> void: _leave(-1)],
-	]
-	_show_overlay(Overlay.create("NAVE DESTRUÍDA", "Setor %d · %s" % [level_index + 1, level.name],
-		rows, buttons, UiStyle.DANGER))
-
+# --------------------------------------------------------- pause, overlays
 
 func _pause() -> void:
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	var buttons := [
-		["Continuar", _resume],
-		["Reiniciar setor", func() -> void: _leave(level_index)],
-		["Menu principal", func() -> void: _leave(-1)],
-	]
-	_show_overlay(Overlay.create("PAUSADO", "Setor %d · %s" % [level_index + 1, level.name], [], buttons,
-		UiStyle.ACCENT, _resume))
+	var buttons: Array = [["Continuar", _resume]]
+	if is_arcade():
+		buttons.append(["Encerrar partida (conta pontos)", _end_arcade_run])
+		buttons.append(["Recomeçar", func() -> void: leave(-2)])
+	else:
+		buttons.append(["Reiniciar setor", func() -> void: leave(level_index)])
+	buttons.append(["Menu principal", func() -> void: leave(-1)])
+	var sub := "Modo Arcade" if is_arcade() else "Setor %d · %s" % [level_index + 1, level.name]
+	show_overlay(Overlay.create("PAUSADO", sub, [], buttons, UiStyle.ACCENT, _resume))
 
 
 func _resume() -> void:
 	get_tree().paused = false
-	_close_overlay()
+	close_overlay()
 
 
-func _show_overlay(overlay: Control) -> void:
-	_close_overlay()
+func _end_arcade_run() -> void:
+	get_tree().paused = false
+	close_overlay()
+	_set_state(State.OVER)
+	player.alive = false
+	run_end.show_game_over()
+
+
+func show_overlay(overlay: Control) -> void:
+	close_overlay()
 	_overlay = overlay
 	hud.add_overlay(overlay)
 
 
-func _close_overlay() -> void:
+func close_overlay() -> void:
 	if _overlay:
 		_overlay.queue_free()
 		_overlay = null
@@ -697,21 +674,19 @@ func _close_overlay() -> void:
 
 func _exit_tree() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	Sfx.set_intensity(1.0)
+	player.external_drift = 0.0
 
 
-func _leave(next_level: int) -> void:
+## next_level: -1 = menu, -2 = new arcade run, otherwise a sector index.
+func leave(next_level: int) -> void:
 	if _leaving:
 		return
 	_leaving = true
 	process_mode = Node.PROCESS_MODE_DISABLED
-	if next_level < 0:
+	if next_level == -1:
 		request_menu.emit.call_deferred()
+	elif next_level == -2:
+		request_arcade.emit.call_deferred()
 	else:
 		request_level.emit.call_deferred(next_level)
-
-
-func _on_geom(pos: Vector3) -> void:
-	multiplier = mini(MAX_MULTIPLIER, multiplier + 1)
-	max_multiplier = maxi(max_multiplier, multiplier)
-	fx.sparks(pos, EnemyTypes.GEOM_COLOR, 4, 8.0, 0.5, 0.2)
-	Sfx.play("shot", -18.0, 2.2)

@@ -16,12 +16,30 @@ const TYPES := {
 		"color": Color(0.45, 0.65, 1.0), "hp": 4.0, "score": 300, "radius": 1.1},
 	"swarm": {"name": "Enxame", "shape": "Estrela", "desc": "Faíscas em espiral que vêm na sua direção.",
 		"color": Color(1.0, 0.3, 0.35), "hp": 1.0, "score": 60, "radius": 0.8},
+	"phantom": {"name": "Espectro", "shape": "Losango fantasma", "desc": "Some e reaparece. O tiro carregado o revela.",
+		"color": Color(0.7, 0.85, 1.0), "hp": 5.0, "score": 400, "radius": 1.1},
+	"splitter": {"name": "Divisor", "shape": "Cubo duplo", "desc": "Ao morrer, divide-se em dois menores.",
+		"color": Color(0.3, 1.0, 0.75), "hp": 6.0, "score": 250, "radius": 1.2},
+	"warden": {"name": "Escudeiro", "shape": "Hexágono", "desc": "Protege inimigos próximos. Mate-o primeiro.",
+		"color": Color(0.3, 0.6, 1.0), "hp": 8.0, "score": 600, "radius": 1.3},
+	"laser": {"name": "Torre laser", "shape": "Torre", "desc": "Avisa com uma linha e dispara um feixe na faixa.",
+		"color": Color(1.0, 0.25, 0.25), "hp": 8.0, "score": 500, "radius": 1.1},
+	"serpent": {"name": "Serpente", "shape": "Corrente", "desc": "Só a cabeça leva dano; o corpo bloqueia tiros.",
+		"color": Color(0.6, 1.0, 0.2), "hp": 14.0, "score": 1200, "radius": 1.3},
+	"serpent_body": {"name": "Corpo da serpente", "shape": "Elo", "desc": "", "color": Color(0.45, 0.8, 0.15),
+		"hp": 1.0, "score": 0, "radius": 0.9, "invulnerable": true, "hidden": true},
+	"decoy": {"name": "Clone", "shape": "Clone", "desc": "", "color": Color(1.0, 0.35, 0.25),
+		"hp": 2.0, "score": 150, "radius": 1.2, "hidden": true},
 	"tank": {"name": "Couraçado", "shape": "Icosaedro", "desc": "Blindado, tiro em leque. Sempre solta upgrade.",
 		"color": Color(1.0, 0.82, 0.2), "hp": 28.0, "score": 1500, "radius": 1.8},
 	"barrier": {"name": "Muralha", "shape": "Barreira", "desc": "INDESTRUTÍVEL. Passe pela abertura.",
 		"color": Color(1.0, 0.85, 0.35), "hp": 1.0, "score": 0, "radius": 1.0, "invulnerable": true},
 	"rotor": {"name": "Varredor", "shape": "Lâminas", "desc": "INDESTRUTÍVEL. Passe entre as lâminas.",
 		"color": Color(1.0, 0.4, 0.3), "hp": 1.0, "score": 0, "radius": 1.0, "invulnerable": true},
+	"pulse_ring": {"name": "Anel pulsante", "shape": "Anel", "desc": "INDESTRUTÍVEL. Fica letal no pulso: passe no intervalo.",
+		"color": Color(1.0, 0.2, 0.5), "hp": 1.0, "score": 0, "radius": 1.0, "invulnerable": true},
+	"spike": {"name": "Espinho", "shape": "Estrela fixa", "desc": "INDESTRUTÍVEL. Campo fixo: use os corredores.",
+		"color": Color(1.0, 0.55, 0.2), "hp": 1.0, "score": 0, "radius": 1.0, "invulnerable": true},
 }
 
 ## Colours shared by gameplay feedback.
@@ -40,6 +58,10 @@ const POWERUPS := {
 	"shield": {"letter": "E", "name": "ESCUDO", "color": Color(0.35, 0.8, 1.0)},
 	"rapid": {"letter": "R", "name": "RAJADA", "color": Color(1.0, 0.6, 0.15)},
 	"bomb": {"letter": "B", "name": "BOMBA", "color": Color(1.0, 0.35, 0.9)},
+	"missile": {"letter": "M", "name": "MÍSSEIS", "color": Color(1.0, 0.5, 0.2)},
+	"slow": {"letter": "T", "name": "TEMPO", "color": Color(0.5, 0.9, 1.0)},
+	"magnet": {"letter": "I", "name": "ÍMÃ", "color": Color(0.4, 1.0, 0.6)},
+	"laser": {"letter": "L", "name": "LASER", "color": Color(0.7, 1.0, 1.0)},
 }
 
 

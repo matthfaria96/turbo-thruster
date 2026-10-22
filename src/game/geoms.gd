@@ -7,9 +7,12 @@ extends Node3D
 const MAX_GEOMS := 260
 const LIFETIME := 7.0
 const MAGNET := 11.0
+const MAGNET_BOOSTED := 70.0
 const COLLECT := 1.6
 
 signal collected(pos: Vector3)
+
+var magnet_boost := false
 
 var track: Track
 var _items: Array[Dictionary] = []
@@ -44,7 +47,7 @@ func update(dt: float, player: Player) -> void:
 		g.age += dt
 		g.spin += dt * 4.0
 		var dist := Track.distance(g.s, g.th, g.h, player.s, player.th, Player.H)
-		if dist < MAGNET and player.alive:
+		if dist < (MAGNET_BOOSTED if magnet_boost else MAGNET) and player.alive:
 			var pull := minf(1.0, dt * (6.0 + 30.0 / maxf(dist, 1.0)))
 			g.s = lerpf(g.s, player.s + 0.5, pull)
 			g.th = lerp_angle(g.th, player.th, pull)

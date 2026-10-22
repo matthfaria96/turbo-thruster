@@ -31,17 +31,21 @@ func add_bullet(s: float, th: float, h: float, vs: float, vth: float) -> void:
 		bullets.append({"s": s, "th": th, "h": h, "vs": vs, "vth": vth, "age": 0.0, "dead": false})
 
 
-func update(dt: float, player_s: float) -> void:
+## Shots move in real time; enemy bullets in world time (slow motion).
+func update(dt: float, time_scale: float, player_s: float, player_speed := 0.0) -> void:
+	var world_dt := dt * time_scale
 	for shot in shots:
 		shot.ps = shot.s
 		shot.s += shot.vs * dt
 		shot.th = wrapf(shot.th + shot.vth * dt, -PI, PI)
 		shot.life -= dt
 	for b in bullets:
-		b.s += b.vs * dt
-		b.th = wrapf(b.th + b.vth * dt, -PI, PI)
-		b.h = move_toward(b.h, Player.H, 2.5 * dt)
-		b.age += dt
+		# Bullets keep their absolute speed in slow motion: scale the
+		# player-relative part so the ship visibly outruns them.
+		b.s += (player_speed + (b.vs - player_speed) * time_scale) * dt
+		b.th = wrapf(b.th + b.vth * world_dt, -PI, PI)
+		b.h = move_toward(b.h, Player.H, 2.5 * world_dt)
+		b.age += world_dt
 	shots = shots.filter(func(x: Dictionary) -> bool: return x.life > 0.0 and not x.get("dead", false))
 	bullets = bullets.filter(func(b: Dictionary) -> bool:
 		return not b.dead and b.age < 9.0 and b.s > player_s - 8.0)
@@ -66,7 +70,7 @@ func render() -> void:
 		var length: float = 6.0 if shot.pierce else 2.8
 		var basis := Basis(fr.basis.x * shot.size * 0.55, -fr.basis.z * length, fr.basis.y)
 		_shot_mm.set_instance_transform(i, Transform3D(basis, pos))
-		_shot_mm.set_instance_color(i, Color(0.75, 1.0, 1.0) if shot.pierce else EnemyTypes.SHOT_COLOR)
+		_shot_mm.set_instance_color(i, Color(0.75, 1.0, 1.0) if shot.pierce else shot.get("color", EnemyTypes.SHOT_COLOR))
 	_bullet_mm.visible_instance_count = bullets.size()
 	for i in bullets.size():
 		var b: Dictionary = bullets[i]

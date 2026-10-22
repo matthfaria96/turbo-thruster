@@ -1,203 +1,85 @@
 class_name Hud
 extends CanvasLayer
-## In-game HUD: score/combo, sector progress or boss health, weapon level,
-## hull, charge meter, centre announcements, damage vignette and white flash.
+## In-game cockpit HUD. The instruments are drawn by CockpitGauges; this
+## node adds the canopy glass, route map, centre announcements, damage
+## vignette, white flash and modal overlays, and sways with the ship.
 
 const VIGNETTE := preload("res://src/shaders/vignette.gdshader")
+const GLASS := preload("res://src/shaders/cockpit_glass.gdshader")
+const SWAY_PX := 16.0
 
 var root: Control
-var _score: Label
-var _combo: Label
-var _title: Label
-var _progress: ProgressBar
-var _boss_box: VBoxContainer
-var _boss_name: Label
-var _boss_bar: ProgressBar
-var _weapon_label: Label
-var _weapon_pips: Array[ColorRect] = []
-var _hull_pips: Array[ColorRect] = []
-var _speed: Label
-var _charge_box: VBoxContainer
+var _gauges: CockpitGauges
 var _route: RouteMap
-var _chips: Dictionary = {}
-var _charge_bar: ProgressBar
-var _charge_label: Label
+var _route_holder: Control
 var _announce: Label
 var _announce_sub: Label
+var _announce_box: Control
+var _announce_tween: Tween
 var _vignette_mat: ShaderMaterial
 var _flash: ColorRect
-var _announce_tween: Tween
 var _damage := 0.0
+var _boss_visible := false
 
 
-func build(index: int, level: Dictionary) -> void:
+func build(_index: int, level: Dictionary, arcade := false) -> void:
 	layer = 5
 	root = UiStyle.full_rect(Control.new())
 	root.theme = UiStyle.theme()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
-	_build_effects()
-	var margin := MarginContainer.new()
-	UiStyle.full_rect(margin)
-	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 28)
-	root.add_child(margin)
-	var column := VBoxContainer.new()
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_child(column)
-	column.add_child(_build_top(index, level))
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(spacer)
-	column.add_child(_build_bottom())
-	_build_announce()
-
-
-func _build_effects() -> void:
-	var vignette := UiStyle.full_rect(ColorRect.new())
-	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_vignette_mat = ShaderMaterial.new()
-	_vignette_mat.shader = VIGNETTE
-	vignette.material = _vignette_mat
+	root.add_child(_canvas_rect(GLASS, {"tint": Color(level.tint, 1.0)}))
+	var vignette := _canvas_rect(VIGNETTE, {})
+	_vignette_mat = vignette.material
 	root.add_child(vignette)
+	_gauges = CockpitGauges.new()
+	UiStyle.full_rect(_gauges)
+	root.add_child(_gauges)
+	if not arcade:
+		_build_route()
+	_build_announce()
 	_flash = UiStyle.full_rect(ColorRect.new()) as ColorRect
 	_flash.color = Color(1, 1, 1, 0)
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_flash)
 
 
-func _side_box(align: int) -> VBoxContainer:
-	var vb := VBoxContainer.new()
-	vb.custom_minimum_size = Vector2(300, 0)
-	vb.alignment = BoxContainer.ALIGNMENT_BEGIN
-	vb.add_theme_constant_override("separation", 2)
-	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.set_meta("align", align)
-	return vb
+func _canvas_rect(shader: Shader, params: Dictionary) -> ColorRect:
+	var rect := UiStyle.full_rect(ColorRect.new()) as ColorRect
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	for key: String in params:
+		mat.set_shader_parameter(key, params[key])
+	rect.material = mat
+	return rect
 
 
-func _build_top(index: int, level: Dictionary) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var left := _side_box(HORIZONTAL_ALIGNMENT_LEFT)
-	left.add_child(UiStyle.label("PONTOS", 15, UiStyle.DIM))
-	_score = UiStyle.label("0", 32, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
-	left.add_child(_score)
-	_combo = UiStyle.label("x1", 26, EnemyTypes.GEOM_COLOR, HORIZONTAL_ALIGNMENT_LEFT, true)
-	left.add_child(_combo)
-	row.add_child(_glass(left, UiStyle.ACCENT))
-	var center := VBoxContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.add_theme_constant_override("separation", 6)
-	_title = UiStyle.label("SETOR %d  ·  %s" % [index + 1, String(level.name).to_upper()], 18,
-		UiStyle.DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
-	center.add_child(_title)
-	_progress = _bar(Vector2(480, 10), UiStyle.ACCENT)
-	center.add_child(_progress)
-	_boss_box = VBoxContainer.new()
-	_boss_box.visible = false
-	_boss_box.add_theme_constant_override("separation", 4)
-	_boss_name = UiStyle.label("", 22, UiStyle.DANGER, HORIZONTAL_ALIGNMENT_CENTER, true)
-	_boss_box.add_child(_boss_name)
-	_boss_bar = _bar(Vector2(560, 16), UiStyle.DANGER)
-	_boss_box.add_child(_boss_bar)
-	center.add_child(_boss_box)
-	row.add_child(center)
-	var right := _side_box(HORIZONTAL_ALIGNMENT_RIGHT)
-	_weapon_label = UiStyle.label("ARMA  NV 1", 15, UiStyle.DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-	right.add_child(_weapon_label)
-	right.add_child(_pips(Player.MAX_WEAPON, EnemyTypes.WEAPON_COLOR, _weapon_pips, BoxContainer.ALIGNMENT_END))
-	_speed = UiStyle.label("", 17, UiStyle.DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-	right.add_child(_speed)
-	row.add_child(_glass(right, EnemyTypes.WEAPON_COLOR))
-	return row
-
-
-## Geometry-Wars-style translucent block with a coloured top stripe.
-func _glass(content: Control, accent: Color, v_flag := Control.SIZE_SHRINK_BEGIN) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sb := UiStyle.box(Color(0.02, 0.05, 0.1, 0.55), Color(accent, 0.9), 0, 3, 10)
-	sb.border_width_top = 3
-	panel.add_theme_stylebox_override("panel", sb)
-	content.custom_minimum_size.x = 260
-	panel.add_child(content)
-	panel.size_flags_vertical = v_flag
-	return panel
-
-
-func _build_bottom() -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var left := _side_box(HORIZONTAL_ALIGNMENT_LEFT)
-	left.add_child(UiStyle.label("CASCO", 15, UiStyle.DIM))
-	left.add_child(_pips(Player.MAX_HULL, EnemyTypes.PLAYER_COLOR, _hull_pips, BoxContainer.ALIGNMENT_BEGIN))
-	row.add_child(_glass(left, EnemyTypes.PLAYER_COLOR, Control.SIZE_SHRINK_END))
-	var middle := VBoxContainer.new()
-	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	middle.alignment = BoxContainer.ALIGNMENT_END
-	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	middle.add_theme_constant_override("separation", 8)
-	var chips := HBoxContainer.new()
-	chips.alignment = BoxContainer.ALIGNMENT_CENTER
-	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for kind in ["shield", "rapid"]:
-		var chip := _chip(kind)
-		chips.add_child(chip)
-		_chips[kind] = chip
-	middle.add_child(chips)
-	_charge_box = VBoxContainer.new()
-	_charge_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_charge_label = UiStyle.label("CARGA", 15, UiStyle.DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
-	_charge_box.add_child(_charge_label)
-	_charge_bar = _bar(Vector2(260, 8), Color(0.8, 1.0, 1.0))
-	_charge_box.add_child(_charge_bar)
-	_charge_box.modulate.a = 0.0
-	middle.add_child(_charge_box)
-	middle.add_child(UiStyle.label("Clique esq.  atirar     Clique dir.  carregar     Esc  pausa", 14,
-		Color(UiStyle.DIM, 0.75), HORIZONTAL_ALIGNMENT_CENTER))
-	row.add_child(middle)
+func _build_route() -> void:
 	_route = RouteMap.new()
-	var holder := PanelContainer.new()
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sb := UiStyle.box(Color(0.02, 0.05, 0.1, 0.55), UiStyle.DANGER, 0, 3, 0)
-	sb.border_width_top = 3
-	holder.add_theme_stylebox_override("panel", sb)
-	holder.add_child(_route)
-	row.add_child(holder)
-	return row
-
-
-func _chip(kind: String) -> PanelContainer:
-	var info := EnemyTypes.powerup(kind)
-	var chip := PanelContainer.new()
-	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sb := UiStyle.box(Color(0.02, 0.05, 0.1, 0.7), info.color, 2, 4, 6)
-	chip.add_theme_stylebox_override("panel", sb)
-	var l := UiStyle.label(info.name, 16, info.color, HORIZONTAL_ALIGNMENT_CENTER, true)
-	l.name = "Text"
-	chip.add_child(l)
-	chip.visible = false
-	return chip
-
-
-func setup_route(track: Track, length: float, plan: Array[Dictionary]) -> void:
-	_route.setup(track, length, plan)
+	_route_holder = PanelContainer.new()
+	_route_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := UiStyle.box(Color(0.02, 0.05, 0.1, 0.4), Color(UiStyle.ACCENT, 0.5), 1, 4, 0)
+	sb.content_margin_left = 4
+	sb.content_margin_right = 4
+	_route_holder.add_theme_stylebox_override("panel", sb)
+	_route_holder.add_child(_route)
+	_route_holder.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	_route_holder.position = Vector2(0, 0)
+	root.add_child(_route_holder)
 
 
 func _build_announce() -> void:
 	var center := CenterContainer.new()
 	UiStyle.full_rect(center)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.offset_bottom = -140
+	center.offset_bottom = -150
 	root.add_child(center)
 	var vb := VBoxContainer.new()
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_theme_constant_override("separation", 2)
 	center.add_child(vb)
-	_announce = UiStyle.title("", 64)
+	_announce = UiStyle.title("", 60)
 	_announce.label_settings.shadow_color = Color(0, 0, 0, 0.6)
 	vb.add_child(_announce)
 	_announce_sub = UiStyle.label("", 26, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_CENTER, true)
@@ -205,107 +87,67 @@ func _build_announce() -> void:
 	_announce_sub.label_settings.outline_color = Color(0, 0, 0, 0.85)
 	vb.add_child(_announce_sub)
 	vb.modulate.a = 0.0
-	root.add_child(_flash)
+	_announce_box = vb
 
 
-func _bar(size: Vector2, color: Color) -> ProgressBar:
-	var bar := ProgressBar.new()
-	bar.custom_minimum_size = size
-	bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	bar.show_percentage = false
-	bar.max_value = 1.0
-	bar.step = 0.0
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_theme_stylebox_override("fill", UiStyle.box(color, color, 0, 4, 0))
-	return bar
+func setup_route(track: Track, length: float, plan: Array[Dictionary], act_starts := PackedFloat32Array()) -> void:
+	_route.setup(track, length, plan, act_starts)
 
 
-func _pips(count: int, color: Color, store: Array[ColorRect], align: int) -> HBoxContainer:
-	var hb := HBoxContainer.new()
-	hb.alignment = align
-	hb.add_theme_constant_override("separation", 6)
-	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for i in count:
-		var pip := ColorRect.new()
-		pip.custom_minimum_size = Vector2(34, 12)
-		pip.color = color
-		pip.set_meta("on", color)
-		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hb.add_child(pip)
-		store.append(pip)
-	return hb
-
-
-## state: score, combo, progress, weapon, hull, speed, charge
+## state: score, multiplier, weapon, hull, speed, charge, shield, rapid,
+## distance, length, kills, total, act, acts, act_title, reticle, bank, hazard
 func refresh(state: Dictionary, dt: float) -> void:
-	_score.text = _format_int(state.score)
-	var mult_text := "x%d" % state.multiplier
-	if _combo.text != mult_text:
-		_combo.text = mult_text
-		_combo.pivot_offset = _combo.size * Vector2(0.0, 0.5)
-		_combo.scale = Vector2.ONE * 1.25
-	_combo.scale = _combo.scale.lerp(Vector2.ONE, minf(1.0, dt * 10.0))
-	_progress.value = state.progress
-	_weapon_label.text = "ARMA  NV %d%s" % [state.weapon, "  MÁX" if state.weapon >= Player.MAX_WEAPON else ""]
-	_set_pips(_weapon_pips, state.weapon)
-	_set_pips(_hull_pips, state.hull)
-	_speed.text = "%d km/h" % int(state.speed * 9.0)
-	_route.update_state(state.distance, _boss_box.visible, dt)
-	for kind: String in _chips:
-		var left: float = state[kind]
-		var chip: PanelContainer = _chips[kind]
-		chip.visible = left > 0.0
-		if chip.visible:
-			(chip.get_node("Text") as Label).text = "%s  %ds" % [EnemyTypes.powerup(kind).name, ceili(left)]
-	var charge: float = state.charge
-	_charge_bar.value = charge
-	_charge_label.text = "PRONTO — SOLTE!" if charge >= 1.0 else "CARREGANDO"
-	_charge_box.modulate.a = move_toward(_charge_box.modulate.a, 1.0 if charge > 0.05 else 0.0, dt * 6.0)
+	var view := root.get_viewport_rect().size
+	_gauges.position = Vector2(-float(state.bank) * SWAY_PX, absf(float(state.bank)) * 4.0)
+	if _boss_visible and float(state.boss_ratio) >= 0.0:
+		_gauges.boss_ratio = float(state.boss_ratio)
+	_gauges.push(state, dt)
+	if _route:
+		_route_holder.position = Vector2(view.x - _route_holder.size.x - 18.0, view.y * 0.5 - _route_holder.size.y * 0.5 - 10.0)
+		_route.update_state(float(state.distance), _boss_visible, dt)
 	_damage = maxf(0.0, _damage - dt * 1.6)
-	var low_hull := 0.25 if state.hull == 1 else 0.0
+	var low_hull := 0.25 if int(state.hull) == 1 else 0.0
 	_vignette_mat.set_shader_parameter("amount", maxf(_damage, low_hull * (0.6 + 0.4 * sin(Time.get_ticks_msec() * 0.008))))
-
-
-func _set_pips(pips: Array[ColorRect], value: int) -> void:
-	for i in pips.size():
-		var on: Color = pips[i].get_meta("on")
-		pips[i].color = on if i < value else Color(0.15, 0.18, 0.25, 0.8)
+	if _damage <= 0.0:
+		_vignette_mat.set_shader_parameter("side", 0.0)
+	_vignette_mat.set_shader_parameter("slow", 1.0 if state.slow else 0.0)
 
 
 func show_boss(boss_name: String) -> void:
-	_progress.visible = false
-	_title.visible = false
-	_boss_box.visible = true
-	_boss_name.text = "CHEFE  ·  " + boss_name.to_upper()
-	if not UiStyle.supports_display(_boss_name.text):
-		_boss_name.label_settings.font = UiStyle.font()
+	_boss_visible = true
+	_gauges.boss_name = boss_name
+	_gauges.boss_ratio = 1.0
 
 
 func hide_boss() -> void:
-	_boss_box.visible = false
+	_boss_visible = false
+	_gauges.boss_ratio = -1.0
 
 
 func set_boss_health(ratio: float) -> void:
-	_boss_bar.value = ratio
+	_gauges.boss_ratio = ratio
 
 
 func announce(text: String, sub := "", duration := 1.8, color := UiStyle.ACCENT) -> void:
 	_announce.text = text
-	_announce.label_settings.outline_color = Color(color, 0.55)
-	_announce.label_settings.shadow_color = Color(0, 0, 0, 0.6)
+	_announce.label_settings.outline_color = Color(color, 0.85)
 	_announce_sub.text = sub
-	var box := _announce.get_parent() as Control
+	if not UiStyle.supports_display(sub):
+		_announce_sub.label_settings.font = UiStyle.font()
+	else:
+		_announce_sub.label_settings.font = UiStyle.display_font()
 	if _announce_tween:
 		_announce_tween.kill()
-	box.scale = Vector2.ONE
 	_announce_tween = create_tween()
-	_announce_tween.tween_property(box, "modulate:a", 1.0, 0.15)
+	_announce_tween.tween_property(_announce_box, "modulate:a", 1.0, 0.15)
 	_announce_tween.tween_interval(duration)
-	_announce_tween.tween_property(box, "modulate:a", 0.0, 0.4)
+	_announce_tween.tween_property(_announce_box, "modulate:a", 0.0, 0.4)
 
 
-func damage_pulse() -> void:
+## side: -1 hit from the left, 1 from the right, 0 around.
+func damage_pulse(side := 0.0) -> void:
 	_damage = 0.9
+	_vignette_mat.set_shader_parameter("side", side)
 
 
 func set_flash(alpha: float) -> void:
@@ -316,7 +158,7 @@ func add_overlay(overlay: Control) -> void:
 	root.add_child(overlay)
 
 
-static func _format_int(value: int) -> String:
+static func format_int(value: int) -> String:
 	var digits := str(absi(value))
 	var out := ""
 	while digits.length() > 3:

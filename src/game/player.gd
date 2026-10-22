@@ -4,6 +4,7 @@ extends Node3D
 ## Player is created for every sector, so nothing carries over.
 
 signal nova_fired(s: float, th: float)
+signal lane_bump
 
 const H := 0.9
 const BASE_SPEED := 34.0
@@ -36,6 +37,10 @@ var invuln := 0.0
 var alive := true
 var min_speed_override := 0.0
 var frozen := false
+var external_drift := 0.0
+var invert_x := false
+var lane_center := 0.0
+var lane_half := PI
 var shield_t := 0.0
 var rapid_t := 0.0
 
@@ -75,8 +80,9 @@ func step(dt: float, input: Dictionary) -> Array[Dictionary]:
 	s += speed * dt
 	if not alive:
 		return shots
-	var x: float = input.x
-	th = wrapf(th + x * STEER * dt, -PI, PI)
+	var x: float = -float(input.x) if invert_x else float(input.x)
+	th = wrapf(th + (x * STEER + external_drift) * dt, -PI, PI)
+	_clamp_to_lane()
 	_bank = lerpf(_bank, -x * 0.55, minf(1.0, 10.0 * dt))
 	_model.rotation.z = _bank
 	_model.visible = invuln <= 0.0 or fmod(invuln, 0.16) > 0.07
@@ -132,6 +138,10 @@ func take_hit() -> bool:
 	return false
 
 
+func bank_amount() -> float:
+	return _bank
+
+
 func upgrade_weapon() -> bool:
 	if weapon >= MAX_WEAPON:
 		return false
@@ -144,3 +154,13 @@ func repair() -> bool:
 		return false
 	hull += 1
 	return true
+
+
+## Keeps the ship inside the open part of the tunnel (lane modifier).
+func _clamp_to_lane() -> void:
+	if lane_half >= PI - 0.01:
+		return
+	var rel := Track.angle_diff(th, lane_center)
+	if absf(rel) > lane_half:
+		th = wrapf(lane_center + signf(rel) * lane_half, -PI, PI)
+		lane_bump.emit()

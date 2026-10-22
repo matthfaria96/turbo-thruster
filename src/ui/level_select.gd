@@ -58,6 +58,15 @@ func _card(index: int) -> Button:
 		rank.offset_right = -18
 		rank.offset_top = -24
 		b.add_child(rank)
+	if unlocked:
+		var earned := Save.medals_for(index).size()
+		var stars := UiStyle.label("★".repeat(earned) + "☆".repeat(Save.MEDAL_IDS.size() - earned), 16,
+			UiStyle.GOLD if earned > 0 else Color(UiStyle.DIM, 0.6), HORIZONTAL_ALIGNMENT_RIGHT)
+		stars.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		stars.offset_left = -90
+		stars.offset_right = -14
+		stars.offset_top = 8
+		b.add_child(stars)
 	b.focus_entered.connect(_show_detail.bind(index))
 	b.pressed.connect(_start.bind(index))
 	return b
@@ -92,9 +101,17 @@ func _show_detail(index: int) -> void:
 	var level := Levels.get_level(index)
 	var unlocked := Save.is_unlocked(index)
 	_detail_name.text = "Setor %d · %s" % [index + 1, level.name] if unlocked else "Setor %d · ???" % (index + 1)
-	_detail_info.text = "Chefe: %s" % level.boss if unlocked else "Conclua o setor anterior para liberar."
+	var acts: Array = level.acts
+	var titles := acts.map(func(a: Dictionary) -> String: return a.title)
+	_detail_info.text = ("%d atos · %.1f km · Chefe: %s\n%s" % [acts.size(), float(level.length) / 1000.0, level.boss,
+		"  ›  ".join(PackedStringArray(titles))]) if unlocked else "Conclua o setor anterior para liberar."
+	_detail_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var best := Save.best_for(index)
-	_detail_best.text = "Recorde: %s pts  ·  Nota %s" % [Hud._format_int(int(best.score)), best.rank] if not best.is_empty() else ""
+	_detail_best.text = "Recorde: %s pts  ·  Nota %s" % [Hud.format_int(int(best.score)), best.rank] if not best.is_empty() else ""
+	var names := Save.medals_for(index).map(func(m: String) -> String: return RunEnd.MEDALS[m][0])
+	if unlocked:
+		_detail_best.text += ("\nMedalhas: " + ", ".join(PackedStringArray(names))) if not names.is_empty() \
+			else "\nMedalhas: Intocável · Exterminador · Multiplicador (x50)"
 	for child in _legend.get_children():
 		child.queue_free()
 	if unlocked:
@@ -112,7 +129,7 @@ func _legend_row(kind: String) -> HBoxContainer:
 	swatch.add_theme_stylebox_override("panel", UiStyle.box(spec.color, Color(1, 1, 1, 0.6), 1, 8, 0))
 	row.add_child(swatch)
 	var name_label := UiStyle.label(spec.name, 19, spec.color.lightened(0.2), HORIZONTAL_ALIGNMENT_LEFT, true)
-	name_label.custom_minimum_size = Vector2(120, 0)
+	name_label.custom_minimum_size = Vector2(150, 0)
 	row.add_child(name_label)
 	row.add_child(UiStyle.label(spec.desc, 17, UiStyle.DIM))
 	return row

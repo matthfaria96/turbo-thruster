@@ -14,7 +14,7 @@ func _initialize() -> void:
 	_check(first is Button and (first as Button).text == "Campanha", "menu focuses Campanha")
 	await _press(KEY_S)
 	var second := root.gui_get_focus_owner()
-	_check(second is Button and (second as Button).text == "Configurações", "S moves focus down")
+	_check(second is Button and (second as Button).text.begins_with("Modo Arcade"), "S moves focus down")
 	await _press(KEY_W)
 	_check((root.gui_get_focus_owner() as Button).text == "Campanha", "W moves focus up")
 	await _press(KEY_ENTER)

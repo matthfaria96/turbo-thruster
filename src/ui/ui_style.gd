@@ -19,6 +19,20 @@ const BODY_FONT := preload("res://assets/fonts/Rajdhani-SemiBold.ttf")
 const DISPLAY_FONT := preload("res://assets/fonts/Orbitron.ttf")
 
 
+const LCD_FONT := preload("res://assets/fonts/DSEG7Classic-Bold.ttf")
+const TERM_FONT := preload("res://assets/fonts/ShareTechMono-Regular.ttf")
+
+
+## Seven-segment display digits (DSEG7). Supports 0-9 . : - and space.
+static func lcd_font() -> Font:
+	return LCD_FONT
+
+
+## Retro monospaced terminal face for cockpit labels (Share Tech Mono).
+static func term_font() -> Font:
+	return TERM_FONT
+
+
 ## Clean condensed sans for text (Rajdhani).
 static func font(_bold := false) -> Font:
 	if _body == null:

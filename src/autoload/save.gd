@@ -23,6 +23,11 @@ const DEFAULT_SETTINGS := {
 var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
 var unlocked := 1
 var best: Dictionary = {}
+var medals: Dictionary = {}
+var arcade_top: Array = []
+
+const ARCADE_SLOTS := 5
+const MEDAL_IDS := ["untouched", "exterminator", "multiplier"]
 
 
 func _ready() -> void:
@@ -72,6 +77,44 @@ func best_for(level: int) -> Dictionary:
 
 
 ## Stores a finished sector. Returns true when it is a new best score.
+func medals_for(level: int) -> Array:
+	return medals.get(str(level), [])
+
+
+## Stores newly earned medals; returns the ones earned for the first time.
+func record_medals(level: int, earned: Array) -> Array:
+	var key := str(level)
+	var have: Array = medals.get(key, [])
+	var fresh := earned.filter(func(m: String) -> bool: return not (m in have))
+	medals[key] = have + fresh
+	save_data()
+	return fresh
+
+
+func arcade_qualifies(score: int) -> bool:
+	return score > 0 and (arcade_top.size() < ARCADE_SLOTS or score > int(arcade_top[-1].score))
+
+
+func arcade_best() -> int:
+	return 0 if arcade_top.is_empty() else int(arcade_top[0].score)
+
+
+## Inserts a run into the top 5; returns its position (0-based) or -1.
+func record_arcade(name: String, score: int, seconds: int) -> int:
+	if not arcade_qualifies(score):
+		return -1
+	var entry := {"name": name.substr(0, 3).to_upper(), "score": score, "time": seconds,
+		"date": Time.get_date_string_from_system()}
+	var pos := 0
+	while pos < arcade_top.size() and int(arcade_top[pos].score) >= score:
+		pos += 1
+	var list := arcade_top.duplicate()
+	list.insert(pos, entry)
+	arcade_top = list.slice(0, ARCADE_SLOTS)
+	save_data()
+	return pos if pos < ARCADE_SLOTS else -1
+
+
 func record_result(level: int, score: int, rank: String) -> bool:
 	var key := str(level)
 	var prev: Dictionary = best.get(key, {})
@@ -92,18 +135,38 @@ func load_data() -> void:
 		push_warning("Save file is corrupt; using defaults.")
 		return
 	var data: Dictionary = parsed
-	var loaded: Dictionary = data.get("settings", {})
+	var raw_settings: Variant = data.get("settings", {})
+	var loaded: Dictionary = raw_settings if typeof(raw_settings) == TYPE_DICTIONARY else {}
 	for key: String in DEFAULT_SETTINGS:
 		settings[key] = _coerce(loaded.get(key), DEFAULT_SETTINGS[key])
-	if int(data.get("version", 1)) < 2:
+	if _num(data.get("version", 1), 1) < 2:
 		settings.autofire = false
-	unlocked = clampi(int(data.get("unlocked", 1)), 1, Levels.count())
+	unlocked = clampi(_num(data.get("unlocked", 1), 1), 1, Levels.count())
+	var loaded_medals: Variant = data.get("medals", {})
+	if typeof(loaded_medals) == TYPE_DICTIONARY:
+		for key: Variant in loaded_medals:
+			var list: Variant = loaded_medals[key]
+			if typeof(list) == TYPE_ARRAY:
+				medals[str(key)] = (list as Array).filter(func(m: Variant) -> bool: return str(m) in MEDAL_IDS)
+	var loaded_top: Variant = data.get("arcade_top", [])
+	if typeof(loaded_top) == TYPE_ARRAY:
+		for entry: Variant in loaded_top:
+			if typeof(entry) == TYPE_DICTIONARY and entry.has("score") and entry.has("name"):
+				arcade_top.append({"name": str(entry.name).substr(0, 3), "score": _num(entry.score),
+					"time": _num(entry.get("time", 0)), "date": str(entry.get("date", ""))})
+		arcade_top.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.score) > int(b.score))
+		arcade_top = arcade_top.slice(0, ARCADE_SLOTS)
 	var loaded_best: Variant = data.get("best", {})
 	if typeof(loaded_best) == TYPE_DICTIONARY:
 		for key: Variant in loaded_best:
 			var entry: Variant = loaded_best[key]
 			if typeof(entry) == TYPE_DICTIONARY and entry.has("score") and entry.has("rank"):
-				best[str(key)] = {"score": int(entry.score), "rank": str(entry.rank)}
+				best[str(key)] = {"score": _num(entry.score), "rank": str(entry.rank)}
+
+
+## Safe number read from untrusted JSON.
+func _num(value: Variant, fallback := 0) -> int:
+	return int(value) if typeof(value) in [TYPE_INT, TYPE_FLOAT] else fallback
 
 
 ## JSON stores every number as float; convert back to the default's type.
@@ -123,4 +186,5 @@ func save_data() -> void:
 	if file == null:
 		push_warning("Could not write save file: %s" % FileAccess.get_open_error())
 		return
-	file.store_string(JSON.stringify({"version": SAVE_VERSION, "settings": settings, "unlocked": unlocked, "best": best}, "\t"))
+	file.store_string(JSON.stringify({"version": SAVE_VERSION, "settings": settings, "unlocked": unlocked, "best": best,
+		"medals": medals, "arcade_top": arcade_top}, "\t"))

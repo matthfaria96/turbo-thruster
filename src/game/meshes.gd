@@ -92,6 +92,35 @@ static func enemy(kind: String) -> Node3D:
 			root.add_child(spin)
 		"rotor":
 			return rotor()
+		"pulse_ring":
+			return pulse_ring()
+		"decoy":
+			var d := boss(color)
+			d.scale = Vector3.ONE * 0.45
+			root.add_child(d)
+		"phantom":
+			var spin := _named("Spin", NeonGeo.build("phantom", NeonGeo.octa(1.0, 1.7), color, 1.9, 0.25))
+			root.add_child(spin)
+			var halo := NeonGeo.build("phantom_ring", NeonGeo.ring(1.4, 18), color.lightened(0.3), 1.6, 0.0, 0.04)
+			root.add_child(halo)
+		"splitter":
+			root.add_child(_named("Spin", NeonGeo.build("split", NeonGeo.cube(1.1), color, 1.9, 0.18)))
+			root.add_child(NeonGeo.build("split_in", NeonGeo.octa(0.7), color.lightened(0.4), 2.0, 0.2, 0.05))
+		"warden":
+			root.add_child(_named("Spin", NeonGeo.build("warden", NeonGeo.ring(1.3, 6, 0.4), color, 2.0, 0.2)))
+			root.add_child(NeonGeo.build("warden_core", NeonGeo.octa(0.5), Color(1, 1, 1), 2.2, 0.3, 0.05))
+		"laser":
+			var base := NeonGeo.build("laser_base", NeonGeo.cube(1.0), color, 1.9, 0.2)
+			base.scale = Vector3(1.2, 0.6, 1.2)
+			root.add_child(base)
+			root.add_child(_named("Spin", NeonGeo.build("laser_eye", NeonGeo.octa(0.55, 1.4), Color(1, 1, 1), 2.4, 0.4, 0.05)))
+		"serpent":
+			root.add_child(_named("Spin", NeonGeo.build("serp_head", NeonGeo.tetra(1.4), color, 2.0, 0.25)))
+			root.add_child(NeonGeo.build("serp_eye", NeonGeo.octa(0.35), Color(1, 1, 1), 2.4, 0.4, 0.05))
+		"serpent_body":
+			root.add_child(_named("Spin", NeonGeo.build("serp_body", NeonGeo.icosa(0.8), color, 1.6, 0.12, 0.05)))
+		"spike":
+			root.add_child(_named("Spin", NeonGeo.build("spike", NeonGeo.star(5, 1.0, 0.35, 0.3), color, 2.2, 0.25)))
 		"tank":
 			var spin := _named("Spin", NeonGeo.build("icosa", NeonGeo.icosa(1.5), color, 1.7, 0.12))
 			root.add_child(spin)
@@ -208,6 +237,30 @@ static func rotor() -> Node3D:
 	spin.add_child(NeonGeo.build("rotor_hub", NeonGeo.octa(0.8), Color(1, 1, 1), 2.2, 0.2, 0.06))
 	var root := Node3D.new()
 	root.add_child(spin)
+	return root
+
+
+## Full-circle hazard ring that pulses lethal (cross-section frame).
+static func pulse_ring() -> Node3D:
+	var color: Color = EnemyTypes.get_type("pulse_ring").color
+	var root := Node3D.new()
+	var spin := Node3D.new()
+	spin.name = "Spin"
+	spin.add_child(NeonGeo.build("pulse_outer", NeonGeo.ring(Track.RADIUS - 0.3, 48, 0.4), color, 2.2, 0.1, 0.1))
+	spin.add_child(NeonGeo.build("pulse_inner", NeonGeo.star(16, Track.RADIUS - 0.6, Track.RADIUS - 1.6, 0.2), color, 1.8, 0.1, 0.06))
+	root.add_child(spin)
+	return root
+
+
+## Destructible boss piece: "head" (orb with eye) or "plate" (armour hexagon).
+static func boss_part(shape: String, color: Color) -> Node3D:
+	var root := Node3D.new()
+	if shape == "head":
+		root.add_child(NeonGeo.build("bpart_head", NeonGeo.icosa(1.0), color, 2.0, 0.18))
+		root.add_child(NeonGeo.build("bpart_eye", NeonGeo.octa(0.35), Color(1, 1, 1), 2.6, 0.4, 0.05))
+	else:
+		var plate := NeonGeo.build("bpart_plate", NeonGeo.ring(1.0, 6, 0.35), color, 2.0, 0.25)
+		root.add_child(plate)
 	return root
 
 

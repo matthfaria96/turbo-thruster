@@ -1,7 +1,7 @@
 extends Node
 ## Scene router: menus (over an animated tunnel) and game sessions.
 ## Command-line (after "--"): --shot=PATH --screen=menu|levels|settings|controls|game
-##   --level=N --delay=SECONDS --autoplay --skip=DISTANCE --size=WxH --gallery  → saves a screenshot and quits (tests).
+##   --level=N --delay=SECONDS --autoplay --skip=DISTANCE --size=WxH --gallery --power=KIND  → saves a screenshot and quits (tests).
 
 var _ui: CanvasLayer
 var _backdrop: MenuBackdrop
@@ -20,6 +20,7 @@ func _ready() -> void:
 		"settings": show_settings()
 		"controls": show_controls()
 		"game": start_level(int(_args.get("level", "0")))
+		"arcade": start_arcade()
 		_: show_main_menu()
 	if _args.has("size"):
 		var dims := String(_args.size).split("x")
@@ -30,7 +31,7 @@ func _ready() -> void:
 
 func show_main_menu() -> void:
 	_show_screen(MainMenu.new(self))
-	Sfx.play_music(0)
+	Sfx.play_music("menu")
 
 
 func show_level_select() -> void:
@@ -46,18 +47,29 @@ func show_controls() -> void:
 
 
 func start_level(index: int) -> void:
+	_launch(index, "campaign")
+
+
+func _launch(index: int, run_mode: String) -> void:
 	_clear_screen()
 	_clear_game()
 	if _backdrop:
 		_backdrop.queue_free()
 		_backdrop = null
 	_game = Game.new()
-	_game.setup(index, _args.has("autoplay"), float(_args.get("skip", "0")))
+	_game.setup(index, _args.has("autoplay"), float(_args.get("skip", "0")), run_mode)
 	if _args.has("gallery"):
 		_game.enable_gallery()
+	if _args.has("power"):
+		_game.ready.connect(func() -> void: _game.powerups.grant(String(_args.power), 30.0), CONNECT_ONE_SHOT)
 	_game.request_menu.connect(show_main_menu)
 	_game.request_level.connect(start_level)
+	_game.request_arcade.connect(start_arcade)
 	add_child(_game)
+
+
+func start_arcade() -> void:
+	_launch(0, "arcade")
 
 
 func quit() -> void:

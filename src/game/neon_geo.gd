@@ -190,6 +190,14 @@ static func _edge_mesh(shape: Dictionary) -> ArrayMesh:
 
 ## segments: Array of [Vector3, Vector3]. Each becomes a camera-facing quad.
 static func edge_mesh_from_segments(segments: Array) -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	fill_edge_mesh(mesh, segments)
+	return mesh
+
+
+## Rebuilds `mesh` in place (reused every frame by TrackLines).
+static func fill_edge_mesh(mesh: ArrayMesh, segments: Array) -> void:
+	mesh.clear_surfaces()
 	var verts := PackedVector3Array()
 	var others := PackedFloat32Array()
 	var uvs := PackedVector2Array()
@@ -210,8 +218,6 @@ static func edge_mesh_from_segments(segments: Array) -> ArrayMesh:
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	arrays[Mesh.ARRAY_CUSTOM0] = others
 	arrays[Mesh.ARRAY_INDEX] = indices
-	var mesh := ArrayMesh.new()
 	if not verts.is_empty():
 		var fmt := Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, fmt)
-	return mesh
