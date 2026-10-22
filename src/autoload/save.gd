@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS := {
 	"glow": 1.0,
 	"shake": true,
 	"autofire": false,
+	"audio_style": 0,
 }
 
 var settings: Dictionary = DEFAULT_SETTINGS.duplicate()

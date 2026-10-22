@@ -138,7 +138,7 @@ static func button(text: String, on_press: Callable, min_width := 360.0) -> Butt
 	b.add_theme_font_size_override("font_size", 24)
 	wire(b)
 	b.pressed.connect(func() -> void:
-		Sfx.play("pickup", -10.0, 1.4)
+		Sfx.play("ui_confirm", -6.0)
 		on_press.call())
 	return b
 
@@ -148,7 +148,7 @@ static func wire(b: BaseButton) -> void:
 	b.mouse_entered.connect(func() -> void:
 		if not b.disabled:
 			b.grab_focus())
-	b.focus_entered.connect(func() -> void: Sfx.play("shot", -14.0, 1.6))
+	b.focus_entered.connect(func() -> void: Sfx.play("ui_move", -8.0))
 
 
 static func hint_bar(text: String) -> Label:

@@ -10,7 +10,8 @@ var _rows: Array[Dictionary] = []
 func _init(p_main: Node) -> void:
 	super(p_main)
 	var col := centered_column(720)
-	col.add_child(UiStyle.title("CONFIGURAÇÕES", 46))
+	col.add_theme_constant_override("separation", 10)
+	col.add_child(UiStyle.title("CONFIGURAÇÕES", 40))
 	var panel := PanelContainer.new()
 	col.add_child(panel)
 	var list := VBoxContainer.new()
@@ -20,12 +21,14 @@ func _init(p_main: Node) -> void:
 	_add_row(list, "Tamanho da janela", "window_size",
 		Save.WINDOW_SIZES.map(func(v: Vector2i) -> String: return "%d × %d" % [v.x, v.y]))
 	_add_row(list, "VSync", "vsync", [false, true])
+	_add_row(list, "Estilo de som", "audio_style", ["Metal", "Clássico"])
 	_add_row(list, "Música", "music", PERCENT_STEPS)
 	_add_row(list, "Efeitos sonoros", "sfx", PERCENT_STEPS)
 	_add_row(list, "Brilho (bloom)", "glow", PERCENT_STEPS)
 	_add_row(list, "Tremor de tela", "shake", [false, true])
 	_add_row(list, "Tiro automático", "autofire", [false, true])
 	var back := UiStyle.button("Voltar", _go_back, 300)
+	back.custom_minimum_size.y = 46
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(back)
 	add_child(UiStyle.hint_bar("↑ ↓  Navegar      ← →  Alterar      Esc  Voltar"))
@@ -45,7 +48,7 @@ func _add_row(parent: Control, text: String, key: String, values: Array) -> void
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(name_label)
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(300, 44)
+	b.custom_minimum_size = Vector2(300, 38)
 	b.focus_mode = Control.FOCUS_ALL
 	UiStyle.wire(b)
 	row.add_child(b)
@@ -84,7 +87,7 @@ func _change(entry: Dictionary, delta: int) -> void:
 	if typeof(value) == TYPE_STRING:
 		value = next
 	Save.set_setting(entry.key, value)
-	Sfx.play("pickup", -10.0, 1.4)
+	Sfx.play("ui_confirm", -6.0)
 	for row in _rows:
 		_refresh(row)
 

@@ -1,29 +1,21 @@
 extends Node
 ## Sound effects pool + music player.
 
-const SOUNDS := {
-	"shot": "res://assets/sounds/chunks/shot.wav",
-	"charge": "res://assets/sounds/chunks/charge.wav",
-	"nova": "res://assets/sounds/chunks/charge_shot.wav",
-	"hit": "res://assets/sounds/chunks/hit.wav",
-	"small": "res://assets/sounds/chunks/small_dest.wav",
-	"middle": "res://assets/sounds/chunks/middle_dest.wav",
-	"boss": "res://assets/sounds/chunks/boss_dest.wav",
-	"ship": "res://assets/sounds/chunks/myship_dest.wav",
-	"pickup": "res://assets/sounds/chunks/extend.wav",
-	"alert": "res://assets/sounds/chunks/timeup_beep.wav",
+## Two audio styles chosen in Settings ("audio_style"):
+##   0 = Metal (default): tools/music/synth_metal.py + sfx_metal.py
+##   1 = Classical: the first synthesized techno set + original Torus Trooper SFX
+const STYLES := ["metal", "classical"]
+const SFX_FILES := {
+	"shot": "shot", "charge": "charge", "nova": "charge_shot", "hit": "hit",
+	"small": "small_dest", "middle": "middle_dest", "boss": "boss_dest", "ship": "myship_dest",
+	"pickup": "extend", "alert": "timeup_beep", "ui_move": "ui_move", "ui_confirm": "ui_confirm",
 }
-## Synthesized soundtrack (tools/music/synth.py). Missing files fall back to
-## the original Torus Trooper tracks.
-const MUSIC := {
-	"menu": "res://assets/music/menu.ogg",
-	"sector_a": "res://assets/music/sector_a.ogg",
-	"sector_b": "res://assets/music/sector_b.ogg",
-	"sector_c": "res://assets/music/sector_c.ogg",
-	"sector_d": "res://assets/music/sector_d.ogg",
-	"sector_e": "res://assets/music/sector_e.ogg",
-	"boss": "res://assets/music/boss.ogg",
-}
+const SFX_DIRS := {"metal": "res://assets/sfx_metal/", "classical": "res://assets/sounds/chunks/"}
+const MUSIC_DIRS := {"metal": "res://assets/music_metal/", "classical": "res://assets/music/"}
+## Classical has no dedicated UI sounds: reuse gentle ones.
+const CLASSICAL_UI := {"ui_move": ["shot", 1.6, -14.0], "ui_confirm": ["pickup", 1.4, -10.0]}
+const TRACKS := ["menu", "sector_a", "sector_b", "sector_c", "sector_d", "sector_e", "boss"]
+## Last-resort music: the original Torus Trooper tracks.
 const FALLBACK := {
 	"menu": "res://assets/sounds/musics/tt1.ogg", "sector_a": "res://assets/sounds/musics/tt1.ogg",
 	"sector_b": "res://assets/sounds/musics/tt2.ogg", "sector_c": "res://assets/sounds/musics/tt3.ogg",
@@ -40,12 +32,11 @@ var _last_play: Dictionary = {}
 var _music: AudioStreamPlayer
 var _music_name := ""
 var _fade: Tween
+var _style := ""
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	for key: String in SOUNDS:
-		_streams[key] = load(SOUNDS[key])
 	for i in POOL_SIZE:
 		var player := AudioStreamPlayer.new()
 		add_child(player)
@@ -53,11 +44,42 @@ func _ready() -> void:
 	_music = AudioStreamPlayer.new()
 	_music.bus = _make_music_bus()
 	add_child(_music)
-	Save.settings_changed.connect(_apply_music_volume)
+	Save.settings_changed.connect(_on_settings_changed)
+	_on_settings_changed()
+
+
+func style() -> String:
+	return STYLES[clampi(int(Save.settings.get("audio_style", 0)), 0, STYLES.size() - 1)]
+
+
+func _on_settings_changed() -> void:
 	_apply_music_volume()
+	if style() == _style:
+		return
+	_style = style()
+	_load_sfx()
+	if _music_name != "":
+		var current := _music_name
+		_music_name = ""
+		play_music(current)
+
+
+func _load_sfx() -> void:
+	_streams.clear()
+	for key: String in SFX_FILES:
+		var path: String = SFX_DIRS[_style] + SFX_FILES[key] + ".wav"
+		if not ResourceLoader.exists(path):
+			path = SFX_DIRS.classical + SFX_FILES[key] + ".wav"
+		if ResourceLoader.exists(path):
+			_streams[key] = load(path)
 
 
 func play(sound: String, volume_db := 0.0, pitch := 1.0) -> void:
+	if not _streams.has(sound) and CLASSICAL_UI.has(sound):
+		var alias: Array = CLASSICAL_UI[sound]
+		sound = alias[0]
+		pitch = alias[1]
+		volume_db += alias[2]
 	var now := Time.get_ticks_msec()
 	if now - int(_last_play.get(sound, -1000)) < MIN_REPEAT_MS:
 		return
@@ -78,7 +100,9 @@ func play_music(track: String) -> void:
 	if track == _music_name and _music.playing:
 		return
 	_music_name = track
-	var path: String = MUSIC.get(track, "")
+	var path: String = MUSIC_DIRS[_style] + track + ".ogg"
+	if not ResourceLoader.exists(path):
+		path = MUSIC_DIRS.classical + track + ".ogg"
 	if not ResourceLoader.exists(path):
 		path = FALLBACK.get(track, FALLBACK.menu)
 	var stream: AudioStream = load(path)

@@ -89,11 +89,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		var name := ""
 		for i in 3:
 			name += ALPHABET[_letters[i]]
-		Sfx.play("pickup", -4.0)
+		Sfx.play("ui_confirm", -2.0)
 		_on_done.call(name)
 	else:
 		return
-	Sfx.play("shot", -14.0, 1.6)
+	Sfx.play("ui_move", -8.0)
 	_accept()
 
 
