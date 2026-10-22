@@ -24,9 +24,12 @@ func _initialize() -> void:
 	await _press(KEY_S)
 	var below := root.gui_get_focus_owner()
 	_check(below != card, "S moves down the sector grid")
-	await _press(KEY_A)
-	await _press(KEY_D)
-	_check(root.gui_get_focus_owner() == below, "A then D returns to the same card")
+	# Step sideways and back; which way first depends on the card's column.
+	var on_left := (below as Control).get_global_rect().position.x < root.get_visible_rect().size.x * 0.5
+	await _press(KEY_D if on_left else KEY_A)
+	_check(root.gui_get_focus_owner() != below, "A/D moves across the sector grid")
+	await _press(KEY_A if on_left else KEY_D)
+	_check(root.gui_get_focus_owner() == below, "stepping back returns to the same card")
 	await _press(KEY_ESCAPE)
 	await process_frame
 	_check((root.gui_get_focus_owner() as Button).text == "Campanha", "Esc returns to menu")
