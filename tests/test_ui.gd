@@ -44,6 +44,16 @@ func _initialize() -> void:
 	await _press(KEY_S)
 	await process_frame
 	_check(panel != null and panel.size == size_a, "sector briefing keeps a fixed size (%s)" % size_a)
+	# Arcade initials: typing letters fills the slots, Backspace erases.
+	var typed := [""]
+	var entry_script: GDScript = load("res://src/ui/initials_entry.gd")
+	var entry: Control = entry_script.call("create", 1000, "1:00", func(n: String) -> void: typed[0] = n)
+	root.add_child(entry)
+	await create_timer(0.7).timeout
+	for key in [KEY_M, KEY_X, KEY_BACKSPACE, KEY_F, KEY_Z, KEY_ENTER]:
+		await _type(key)
+	_check(typed[0] == "MFZ", "typing initials works (got '%s')" % typed[0])
+	entry.queue_free()
 	print("ui checks done, failures: %d" % _fail)
 	quit(1 if _fail > 0 else 0)
 
@@ -72,3 +82,18 @@ func _find_briefing(node: Node) -> Control:
 		if (child as Control).size.x >= 500.0:
 			return child
 	return null
+
+
+func _type(key: Key) -> void:
+	var ev := InputEventKey.new()
+	ev.keycode = key
+	ev.physical_keycode = key
+	ev.pressed = true
+	if key >= KEY_A and key <= KEY_Z:
+		ev.unicode = "abcdefghijklmnopqrstuvwxyz".unicode_at(key - KEY_A)
+	Input.parse_input_event(ev)
+	await process_frame
+	var up := ev.duplicate() as InputEventKey
+	up.pressed = false
+	Input.parse_input_event(up)
+	await process_frame

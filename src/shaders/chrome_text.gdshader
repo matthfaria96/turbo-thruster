@@ -20,18 +20,16 @@ void vertex() {
 void fragment() {
 	float a = texture(TEXTURE, UV).a;
 	float v = clamp((local.y - y_offset) / max(height, 1.0), 0.0, 1.0);
-	vec3 col;
-	if (v < 0.52) {
-		col = mix(top.rgb, mid.rgb, smoothstep(0.0, 0.5, v));
-	} else if (v < 0.57) {
-		col = horizon.rgb;
-	} else {
-		col = mix(low.rgb, bottom.rgb, smoothstep(0.57, 1.0, v));
-	}
+	// Antialiased horizon band: edges are blended over ~1.5 pixels so the
+	// stripe stays crisp without shimmering.
+	float aa = max(fwidth(v) * 1.5, 0.004);
+	vec3 sky = mix(top.rgb, mid.rgb, smoothstep(0.0, 0.5, v));
+	vec3 sun = mix(low.rgb, bottom.rgb, smoothstep(0.57, 1.0, v));
+	vec3 col = mix(sky, horizon.rgb, smoothstep(0.52 - aa, 0.52 + aa, v));
+	col = mix(col, sun, smoothstep(0.57 - aa, 0.57 + aa, v));
 	// Diagonal shine band sweeping left to right.
 	float band = fract((local.x * 0.0018 + local.y * 0.0009) - TIME * shine_speed);
 	float shine = smoothstep(0.0, 0.03, band) * (1.0 - smoothstep(0.03, 0.08, band));
 	col = mix(col, vec3(1.0), shine * 0.85);
-	col *= 0.94 + 0.06 * sin(local.y * 1.4 + TIME * 3.0);
 	COLOR = vec4(col, a * COLOR.a);
 }

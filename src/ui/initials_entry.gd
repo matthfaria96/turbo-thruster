@@ -1,11 +1,13 @@
 class_name InitialsEntry
 extends Control
-## Arcade-style three-letter name entry. W/S (or ↑/↓) change the letter,
-## A/D (or ←/→) move between slots, Enter confirms.
+## Arcade-style three-letter name entry: just type the letters (Backspace
+## erases, Enter confirms). ↑/↓ and a gamepad can also cycle letters.
 
 const ALPHABET := "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-var _letters := [0, 0, 0]
+const BLANK := -1
+
+var _letters := [BLANK, BLANK, BLANK]
 var _slot := 0
 var _labels: Array[Label] = []
 var _on_done: Callable
@@ -37,7 +39,7 @@ func _build(score: int, time_text: String) -> void:
 	vb.add_child(ArcadeTitle.make("NOVO RECORDE!", 40, UiStyle.GOLD))
 	vb.add_child(UiStyle.label("%s pontos · %s" % [Hud.format_int(score), time_text], 24, UiStyle.TEXT,
 		HORIZONTAL_ALIGNMENT_CENTER, true))
-	vb.add_child(UiStyle.label("Digite suas iniciais", 20, UiStyle.DIM, HORIZONTAL_ALIGNMENT_CENTER))
+	vb.add_child(UiStyle.label("Digite suas 3 iniciais", 20, UiStyle.DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 24)
@@ -53,7 +55,7 @@ func _build(score: int, time_text: String) -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		row.add_child(l)
 		_labels.append(l)
-	add_child(UiStyle.hint_bar("W S  Letra      A D  Posição      Enter  Confirmar"))
+	add_child(UiStyle.hint_bar("Digite as letras      Backspace  Apagar      Enter  Confirmar"))
 	_refresh()
 
 
@@ -65,36 +67,86 @@ func _process(delta: float) -> void:
 func _refresh() -> void:
 	for i in 3:
 		var l := _labels[i]
-		l.text = ALPHABET[_letters[i]]
+		l.text = "_" if _letters[i] == BLANK else ALPHABET[_letters[i]]
 		var active := i == _slot and not _done
 		l.label_settings.font_color = UiStyle.GOLD if active else UiStyle.TEXT
 		l.label_settings.outline_color = Color(UiStyle.GOLD, 0.6 if active and fmod(_t, 0.6) < 0.4 else 0.0)
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	# Ignore input briefly so a player still mashing fire can't submit "AAA".
-	if _done or _t < 0.8:
+## Uses _input so typing always reaches this screen first.
+func _input(event: InputEvent) -> void:
+	# Ignore input briefly so a player still mashing fire can't submit early.
+	if _done or _t < 0.5:
 		return
+	var key := event as InputEventKey
+	if key and key.pressed and not key.echo:
+		if _handle_key(key):
+			_accept()
+		return
+	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
+		if _handle_pad(event):
+			_accept()
+
+
+func _handle_key(key: InputEventKey) -> bool:
+	match key.keycode:
+		KEY_ENTER, KEY_KP_ENTER:
+			_confirm()
+			return true
+		KEY_BACKSPACE:
+			if _letters[_slot] == BLANK and _slot > 0:
+				_slot -= 1
+			_letters[_slot] = BLANK
+		KEY_LEFT:
+			_slot = maxi(0, _slot - 1)
+		KEY_RIGHT:
+			_slot = mini(2, _slot + 1)
+		KEY_UP:
+			_cycle(1)
+		KEY_DOWN:
+			_cycle(-1)
+		_:
+			var ch := char(key.unicode).to_upper() if key.unicode > 0 else ""
+			var idx := ALPHABET.find(ch) if ch.length() == 1 else -1
+			if idx < 0:
+				return false
+			_letters[_slot] = idx
+			_slot = mini(2, _slot + 1)
+	Sfx.play("ui_move", -8.0)
+	return true
+
+
+func _handle_pad(event: InputEvent) -> bool:
 	if event.is_action_pressed("ui_up"):
-		_letters[_slot] = posmod(_letters[_slot] + 1, ALPHABET.length())
+		_cycle(1)
 	elif event.is_action_pressed("ui_down"):
-		_letters[_slot] = posmod(_letters[_slot] - 1, ALPHABET.length())
+		_cycle(-1)
 	elif event.is_action_pressed("ui_left"):
 		_slot = maxi(0, _slot - 1)
 	elif event.is_action_pressed("ui_right"):
 		_slot = mini(2, _slot + 1)
-	elif event is InputEventKey and (event as InputEventKey).pressed and (event as InputEventKey).keycode in [KEY_ENTER, KEY_KP_ENTER] \
-			or event.is_action_pressed("ui_accept") and event is InputEventJoypadButton:
-		_done = true
-		var name := ""
-		for i in 3:
-			name += ALPHABET[_letters[i]]
-		Sfx.play("ui_confirm", -2.0)
-		_on_done.call(name)
+	elif event.is_action_pressed("ui_accept"):
+		_confirm()
+		return true
 	else:
-		return
+		return false
 	Sfx.play("ui_move", -8.0)
-	_accept()
+	return true
+
+
+func _cycle(step: int) -> void:
+	var current: int = _letters[_slot]
+	_letters[_slot] = posmod((0 if current == BLANK and step > 0 else current) + (0 if current == BLANK else step), ALPHABET.length())
+
+
+## Empty slots become "-" so a run can be saved with fewer letters.
+func _confirm() -> void:
+	_done = true
+	var name := ""
+	for i in 3:
+		name += "-" if _letters[i] == BLANK else ALPHABET[_letters[i]]
+	Sfx.play("ui_confirm", -2.0)
+	_on_done.call(name)
 
 
 func _accept() -> void:

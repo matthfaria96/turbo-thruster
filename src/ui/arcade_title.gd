@@ -116,7 +116,8 @@ func _process(delta: float) -> void:
 	_t += delta
 	var appear := ease(minf(1.0, _t / 0.45), 0.3)
 	pivot_offset = size * 0.5
-	scale = Vector2.ONE * lerpf(1.35, 1.0, appear) * (1.0 + sin(_t * 1.6) * 0.012)
+	# Pop in once, then stay at exactly 1:1 so the letters never resample.
+	scale = Vector2.ONE * lerpf(1.35, 1.0, appear)
 	modulate.a = appear
 	var mat := _face.material as ShaderMaterial
 	var font := UiStyle.arcade_font()
