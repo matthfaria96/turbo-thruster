@@ -135,7 +135,9 @@ func step(dt: float, game: Game) -> void:
 			th = lerp_angle(th, game.player.th, dt * 0.25)
 			_try_fire(dt, game, ahead, 2.1, func(): game.fire_aimed(s, th, h, 20.0, 5, 0.16))
 		"barrier":
-			th = _base_th + sin(age * 0.6 + _phase) * 0.25
+			# Sweeps around the tunnel: the gap moves, so keep tracking it.
+			var dir := 1.0 if fposmod(_base_th * 7.0, 2.0) < 1.0 else -1.0
+			th = wrapf(_base_th + age * dir * (0.75 + _difficulty * 0.25), -PI, PI)
 		"rotor":
 			pass
 		_:
@@ -335,7 +337,7 @@ func _animate(dt: float, game: Game) -> void:
 			"spike":
 				_spin.rotation.z += dt * 1.0
 			"rotor":
-				_spin.rotation.z += dt * (1.1 + _difficulty * 0.35) * (1.0 if _phase >= 0.0 else -1.0)
+				_spin.rotation.z += dt * (2.0 + _difficulty * 0.6) * (1.0 if _phase >= 0.0 else -1.0)
 	if _orbit:
 		_orbit.rotation.z -= dt * 2.2
 	# Spawn: spiral in from nothing, then breathe. Hits punch and shake it.

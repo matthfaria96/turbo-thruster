@@ -30,6 +30,7 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, r: float, color: Colo
 		"pulse_ring": _ring(ci, c, r, color)
 		"spike": _star(ci, c, r, r * 0.35, 5, color)
 		"charge": _charge(ci, c, r, color)
+		"nitro": _nitro(ci, c, r, color)
 		_: _poly(ci, c, r, 8, 0.0, color, false)
 	if kind == "splitter":
 		_square(ci, c + Vector2(r * 0.3, r * 0.3), r * 0.55, color, false)
@@ -168,6 +169,15 @@ static func _charge(ci: CanvasItem, c: Vector2, r: float, color: Color) -> void:
 	for i in 4:
 		var a := PI / 4.0 + TAU * i / 4.0
 		ci.draw_line(c + Vector2(cos(a), sin(a)) * r * 0.6, c + Vector2(cos(a), sin(a)) * r * 0.9, color, LINE, true)
+
+
+## Nitro: double chevron pointing forward.
+static func _nitro(ci: CanvasItem, c: Vector2, r: float, color: Color) -> void:
+	for k in 2:
+		var y := c.y + r * 0.35 - k * r * 0.6
+		var pts := PackedVector2Array([Vector2(c.x - r * 0.8, y + r * 0.35), Vector2(c.x, y - r * 0.35),
+			Vector2(c.x + r * 0.8, y + r * 0.35)])
+		ci.draw_polyline(pts, color, LINE + 1.0, true)
 
 
 static func _pickup(ci: CanvasItem, kind: String, c: Vector2, r: float) -> void:

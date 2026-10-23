@@ -5,22 +5,20 @@ extends RefCounted
 const ACTIONS := {
 	"move_left": {"keys": [KEY_A, KEY_LEFT], "buttons": [JOY_BUTTON_DPAD_LEFT], "axes": [[JOY_AXIS_LEFT_X, -1.0]]},
 	"move_right": {"keys": [KEY_D, KEY_RIGHT], "buttons": [JOY_BUTTON_DPAD_RIGHT], "axes": [[JOY_AXIS_LEFT_X, 1.0]]},
-	"accelerate": {"keys": [KEY_W, KEY_UP], "buttons": [JOY_BUTTON_DPAD_UP], "axes": [[JOY_AXIS_LEFT_Y, -1.0]]},
-	"brake": {"keys": [KEY_S, KEY_DOWN], "buttons": [JOY_BUTTON_DPAD_DOWN], "axes": [[JOY_AXIS_LEFT_Y, 1.0]]},
 	"fire": {"keys": [KEY_J], "mouse": [MOUSE_BUTTON_LEFT], "buttons": [JOY_BUTTON_A], "axes": [[JOY_AXIS_TRIGGER_RIGHT, 1.0]]},
 	"charge": {"keys": [KEY_SHIFT, KEY_K], "mouse": [MOUSE_BUTTON_RIGHT], "buttons": [JOY_BUTTON_X], "axes": [[JOY_AXIS_TRIGGER_LEFT, 1.0]]},
-	"special": {"keys": [KEY_SPACE, KEY_Q], "buttons": [JOY_BUTTON_Y, JOY_BUTTON_B], "axes": []},
+	"special": {"keys": [KEY_SPACE], "buttons": [JOY_BUTTON_Y, JOY_BUTTON_B], "axes": []},
+	"nitro": {"keys": [KEY_Q], "buttons": [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER], "axes": []},
 	"pause": {"keys": [KEY_ESCAPE, KEY_P], "buttons": [JOY_BUTTON_START], "axes": []},
 }
 
 ## Rows shown on the Controls screen: [action label, keyboard, gamepad].
 const HELP := [
 	["Ir para os lados", "A / D", "Analógico / D-pad"],
-	["Acelerar (frente)", "W", "Analógico para cima"],
-	["Frear (trás)", "S", "Analógico para baixo"],
 	["Atirar (segurar)", "Botão esquerdo do mouse", "A / RT"],
 	["Anel de energia (segure e solte)", "Botão direito do mouse", "X / LT"],
 	["Especial: bomba (limpa a tela)", "Espaço", "Y / B"],
+	["Nitro (quando a barra encher)", "Q", "LB / RB"],
 	["Pausar", "Esc / P", "Start"],
 	["Tela cheia", "F11", "—"],
 ]

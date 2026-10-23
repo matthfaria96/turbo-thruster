@@ -186,6 +186,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause") and state in ACTIVE_STATES and not get_tree().paused:
 		get_viewport().set_input_as_handled()
 		_pause()
+	elif event.is_action_pressed("nitro") and state in [State.PLAY, State.BOSS] and not get_tree().paused:
+		get_viewport().set_input_as_handled()
+		_fire_nitro()
 	elif event.is_action_pressed("special") and state in [State.PLAY, State.BOSS] and not get_tree().paused:
 		get_viewport().set_input_as_handled()
 		powerups.use_special()
@@ -222,7 +225,7 @@ func _process(delta: float) -> void:
 	projectiles.render()
 	geoms.render()
 	tunnel.update_view(player.s)
-	var speed_k := clampf((player.speed - Player.BASE_SPEED) / (Player.MAX_SPEED - Player.BASE_SPEED + 14.0), 0.0, 1.0)
+	var speed_k := clampf((player.speed - 28.0) / (Player.NITRO_SPEED - 28.0), 0.0, 1.0)
 	tunnel.set_flow(0.25 + speed_k * 0.75, player.s)
 	post.set_speed(speed_k)
 	_warp.amount_ratio = clampf(0.15 + speed_k * 0.85, 0.0, 1.0)
@@ -294,7 +297,6 @@ func _read_input() -> Dictionary:
 		return _autoplay_input()
 	return {
 		"x": Input.get_axis("move_left", "move_right"),
-		"y": Input.get_axis("brake", "accelerate"),
 		"fire": state != State.INTRO and (bool(Save.settings.autofire) or Input.is_action_pressed("fire")),
 		"charge": state != State.INTRO and Input.is_action_pressed("charge"),
 	}
@@ -311,6 +313,8 @@ func _autoplay_input() -> Dictionary:
 	var x := clampf(Track.angle_diff(target, player.th) * 3.0, -1.0, 1.0)
 	if player.invert_x:
 		x = -x
+	if player.nitro >= 1.0 and state == State.PLAY:
+		_fire_nitro()
 	# Hold the charge for 0.8 s every 2 s so the harness exercises it.
 	var charging := state != State.INTRO and fmod(state_t, 2.0) < 0.8
 	return {"x": x, "y": 0.6, "fire": state != State.INTRO and not charging, "charge": charging}
@@ -419,8 +423,7 @@ func _on_act_started(index: int, title: String) -> void:
 
 
 func _apply_act_mods(dt: float) -> void:
-	if state == State.PLAY:
-		player.min_speed_override = director.get_value("speed_floor")
+	_update_cruise()
 	tunnel.set_brightness(director.get_value("brightness"))
 	Sfx.set_intensity(1.0 if boss_active() or is_arcade() else director.intensity())
 	if state in [State.INTRO, State.PLAY, State.BOSS]:
@@ -567,6 +570,42 @@ func fire_ring(s: float, h: float, count: int, gap_th: float, gap: int, rel_spee
 var donuts: Array[Donut] = []
 
 
+const NITRO_PER_KILL := 0.035
+const NITRO_PER_BIG_KILL := 0.12
+const NITRO_PER_GEOM := 0.004
+const CRUISE_START := 30.0
+const CRUISE_END := 50.0
+
+
+## Speed rises on its own: with sector progress (campaign) or survived time
+## (arcade). Act speed floors ("zona turbo") still apply on top.
+func _update_cruise() -> void:
+	var ramp := clampf(player.s / float(level.length), 0.0, 1.0) if not is_arcade() else clampf(elapsed / 360.0, 0.0, 1.4)
+	var cruise := lerpf(CRUISE_START, CRUISE_END, ramp)
+	if state == State.PLAY:
+		cruise = maxf(cruise, director.get_value("speed_floor"))
+	if state in [State.PORTAL, State.FINALE]:
+		cruise = maxf(cruise, player.min_speed_override)
+	player.cruise = cruise if state != State.INTRO else CRUISE_START
+
+
+func gain_nitro(amount: float) -> void:
+	if player.add_nitro(amount):
+		hud.announce("", "NITRO PRONTO — APERTE Q", 1.4, Player.NITRO_COLOR)
+		Sfx.play("pickup", -6.0, 1.3)
+
+
+func _fire_nitro() -> void:
+	if not player.fire_nitro():
+		Sfx.play("hit", -8.0, 0.5)
+		return
+	hud.announce("NITRO!", "", 0.8, Player.NITRO_COLOR)
+	post.kick(0.7)
+	post.pulse(Player.NITRO_COLOR, 0.5)
+	fx.shake = maxf(fx.shake, 0.3)
+	Sfx.play("charge", -2.0, 1.4)
+
+
 ## Right-click release: launch one energy ring down the ship's lane.
 func _on_nova(s: float, th: float) -> void:
 	var d := Donut.new()
@@ -594,6 +633,7 @@ func _charge_fx() -> void:
 
 
 func _on_geom(pos: Vector3) -> void:
+	gain_nitro(NITRO_PER_GEOM)
 	multiplier = mini(MAX_MULTIPLIER, multiplier + 1)
 	max_multiplier = maxi(max_multiplier, multiplier)
 	fx.sparks(pos, EnemyTypes.GEOM_COLOR, 4, 8.0, 0.5, 0.2)

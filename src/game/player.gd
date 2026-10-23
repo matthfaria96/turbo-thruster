@@ -10,6 +10,9 @@ const H := 0.9
 const BASE_SPEED := 34.0
 const MAX_SPEED := 56.0
 const MIN_SPEED := 16.0
+const NITRO_SPEED := 82.0
+const NITRO_TIME := 4.0
+const NITRO_COLOR := Color(1.0, 0.55, 0.15)
 const STEER := 2.6
 const MAX_HULL := 4
 const MAX_WEAPON := 5
@@ -31,6 +34,11 @@ const PATTERNS := [
 var s := 0.0
 var th := 0.0
 var speed := BASE_SPEED
+## Cruise speed set by the game: rises on its own during the run.
+var cruise := 30.0
+## Nitro gauge 0..1 (filled by kills/geoms) and active boost time left.
+var nitro := 0.0
+var nitro_t := 0.0
 var hull := MAX_HULL
 var weapon := 1
 var charge := 0.0
@@ -90,10 +98,10 @@ func step(dt: float, input: Dictionary) -> Array[Dictionary]:
 	_shield.rotate_y(dt * 0.8)
 	_shield.rotate_x(dt * 0.3)
 	_fire_cd -= dt
-	var y: float = input.y
-	var target := BASE_SPEED + (y * (MAX_SPEED - BASE_SPEED) if y > 0.0 else y * (BASE_SPEED - MIN_SPEED))
+	nitro_t = maxf(0.0, nitro_t - dt)
+	var target := maxf(cruise, NITRO_SPEED if nitro_t > 0.0 else 0.0)
 	target = maxf(target, min_speed_override)
-	speed = 0.0 if frozen else move_toward(speed, target, 45.0 * dt)
+	speed = 0.0 if frozen else move_toward(speed, target, (90.0 if nitro_t > 0.0 else 30.0) * dt)
 	s += speed * dt
 	if not alive:
 		return shots
@@ -168,6 +176,21 @@ func take_hit() -> bool:
 		_model.visible = false
 		return true
 	return false
+
+
+func add_nitro(amount: float) -> bool:
+	var was_full := nitro >= 1.0
+	nitro = minf(1.0, nitro + amount)
+	return nitro >= 1.0 and not was_full
+
+
+## Q: spend a full gauge on a burst of speed.
+func fire_nitro() -> bool:
+	if nitro < 1.0 or nitro_t > 0.0 or not alive:
+		return false
+	nitro = 0.0
+	nitro_t = NITRO_TIME
+	return true
 
 
 func bank_amount() -> float:

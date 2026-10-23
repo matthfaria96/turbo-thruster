@@ -117,14 +117,17 @@ macOS e Linux**.
 | Ação | Teclado e mouse | Controle |
 | --- | --- | --- |
 | Ir para os lados | A / D | analógico / D-pad |
-| Acelerar (frente) / frear (trás) | W / S | analógico |
 | Atirar (segurar) | botão esquerdo do mouse | A / RT |
 | Anel de energia (segure ~0,5 s e solte) | botão direito do mouse | X / LT |
 | Especial: bomba (até 4 em estoque) | Espaço | Y / B |
+| Nitro (quando a barra encher) | Q | LB / RB |
 | Pausar | Esc / P | Start |
 | Tela cheia | F11 | — |
 
-Acelerar rende mais pontos. Frear deixa as balas inimigas mais lentas. O anel de
+A nave acelera sozinha ao longo da fase, e quanto mais rápido, mais pontos.
+Abates e geoms enchem a barra de **nitro**: cheia, aperte **Q** para 4 s de
+velocidade máxima com pontos em dobro, atravessando os inimigos comuns
+(obstáculos e balas continuam perigosos).
 energia carrega uma esfera na ponta da nave; ao soltar, sai uma "rosquinha" de
 energia que cresce pelo túnel, apaga as balas inimigas no caminho e acerta no
 máximo 3 inimigos antes de se desfazer.

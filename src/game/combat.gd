@@ -178,6 +178,11 @@ func _enemies_vs_player() -> void:
 	for e in g.enemies:
 		if not e.alive or not vulnerable:
 			continue
+		# Nitro rams through ordinary enemies; obstacles and beams still hurt.
+		if p.nitro_t > 0.0 and not e.invulnerable and e.kind != "laser" and e.touches(p):
+			if e.damage(999.0):
+				on_enemy_killed(e)
+			continue
 		if e.beam_hits(p) or e.touches(p):
 			if e.invulnerable or e.kind == "laser":
 				g.fx.sparks(p.global_position, e.spec.color, 20, 18.0, 1.0, 0.35)
@@ -241,9 +246,10 @@ func on_enemy_killed(e: Enemy) -> void:
 	g.kills += 1
 	if e.from_plan:
 		g.plan_kills += 1
-	var points := int(e.spec.score * g.multiplier * _speed_mult())
+	var points := int(e.spec.score * g.multiplier * _speed_mult() * (2.0 if g.player.nitro_t > 0.0 else 1.0))
 	g.score += points
 	var big := e.kind in ["tank", "serpent", "warden", "drifter"]
+	g.gain_nitro(Game.NITRO_PER_BIG_KILL if big else Game.NITRO_PER_KILL)
 	g.fx.explosion(e.global_position, e.spec.color, 1.8 if big else 1.0)
 	g.post.pulse(e.spec.color, 0.45 if big else 0.18)
 	if big:
