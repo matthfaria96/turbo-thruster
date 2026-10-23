@@ -125,7 +125,7 @@ macOS e Linux**.
 | Tela cheia | F11 | — |
 
 A nave acelera sozinha ao longo da fase, e quanto mais rápido, mais pontos.
-Abates e geoms enchem a barra de **nitro**: cheia, aperte **Q** para 4 s de
+Abates e geoms enchem o **nitro** (o arco laranja fino em volta do velocímetro): cheia, aperte **Q** para 4 s de
 velocidade máxima com pontos em dobro, atravessando os inimigos comuns
 (obstáculos e balas continuam perigosos).
 energia carrega uma esfera na ponta da nave; ao soltar, sai uma "rosquinha" de

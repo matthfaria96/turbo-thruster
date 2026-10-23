@@ -189,6 +189,7 @@ func _draw_speed_dial() -> void:
 		var inner := 80.0 if i % 5 == 0 else 85.0
 		draw_line(_p(center + Vector2(cos(a), sin(a)) * inner), _p(center + Vector2(cos(a), sin(a)) * 89.0),
 			Color(WHITE, 0.6), 1.5 * _k)
+	_draw_nitro_arc(center, start, finish)
 	var charge := float(state.charge)
 	if charge > 0.0:
 		_arc(center, 72, start, lerpf(start, finish, charge), WHITE if charge >= 1.0 else Color(0.8, 1, 1), 6)
@@ -196,6 +197,25 @@ func _draw_speed_dial() -> void:
 	_label(center + Vector2(0, -12), "KM/H", 12, DIM)
 	if charge >= 1.0:
 		_label(center + Vector2(0, -78), "> SOLTE! <", 14, WHITE)
+
+
+## Thin orange arc just outside the speed arc: fills with nitro energy,
+## pulses with a "Q" tag when ready, drains while the boost is active.
+func _draw_nitro_arc(center: Vector2, start: float, finish: float) -> void:
+	var orange := Player.NITRO_COLOR
+	var active := float(state.get("nitro_t", 0.0)) > 0.0
+	var ratio := float(state.nitro_t) / Player.NITRO_TIME if active else float(state.get("nitro", 0.0))
+	var ready := not active and ratio >= 1.0
+	_arc(center, 106, start, finish, Color(0.12, 0.08, 0.04, 0.8), 4)
+	if ratio > 0.0:
+		var glow := 1.0 + (0.35 * sin(_t * 10.0) if ready or active else 0.0)
+		_arc(center, 106, start, lerpf(start, finish, ratio), Color(orange * glow, 1.0), 4)
+	if ready:
+		var tip := center + Vector2(cos(finish), sin(finish)) * 106.0
+		var pulse := 0.75 + 0.25 * sin(_t * 8.0)
+		_label(tip + Vector2(18, 4), "Q", 15, Color(orange, pulse), HORIZONTAL_ALIGNMENT_CENTER, 30)
+	elif active:
+		_label(center + Vector2(0, -122), "NITRO", 12, orange)
 
 
 func _draw_ring_gauge(center: Vector2, label: String, value: int, maximum: int, color: Color,

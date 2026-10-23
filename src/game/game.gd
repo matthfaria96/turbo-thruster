@@ -243,7 +243,8 @@ func _hud_state() -> Dictionary:
 		"act": director.index, "acts": director.count, "act_title": director.title,
 		"reticle": _reticle_screen_pos(), "bank": player.bank_amount(), "hazard": _hazard_ahead(),
 		"elapsed": elapsed, "arcade": is_arcade(), "boss_ratio": boss_ratio(),
-		"slow": time_scale < 0.99, "power": powerups.active_label(), "specials": player.specials}
+		"slow": time_scale < 0.99, "power": powerups.active_label(), "specials": player.specials,
+		"nitro": player.nitro, "nitro_t": player.nitro_t}
 
 
 # --------------------------------------------------------------- state flow

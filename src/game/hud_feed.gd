@@ -18,11 +18,6 @@ static func powers(g: Game) -> Array:
 		{"icon": "charge", "name": "Anel de energia", "key": "BOTÃO DIR.", "color": Color(0.75, 1.0, 1.0),
 			"ratio": p.charge, "ready": p.charge >= 1.0, "label": "PRONTO!" if p.charge >= 1.0 else ""},
 	]
-	var nitro_ready := p.nitro >= 1.0
-	rows.append({"icon": "nitro", "name": "Nitro" + (" ATIVO" if p.nitro_t > 0.0 else ""), "key": "Q",
-		"color": Player.NITRO_COLOR, "ready": nitro_ready or p.nitro_t > 0.0,
-		"ratio": p.nitro_t / Player.NITRO_TIME if p.nitro_t > 0.0 else p.nitro,
-		"label": "%ds" % ceili(p.nitro_t) if p.nitro_t > 0.0 else ("PRONTO!" if nitro_ready else "%d%%" % int(p.nitro * 100.0))})
 	var timed := [["shield", p.shield_t, 10.0], ["rapid", p.rapid_t, 9.0], ["missile", pu.missile_t, PowerUps.MISSILE_TIME],
 		["slow", pu.slow_t, PowerUps.SLOW_TIME], ["magnet", pu.magnet_t, PowerUps.MAGNET_TIME],
 		["laser", pu.laser_t, PowerUps.LASER_TIME]]
