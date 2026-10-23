@@ -54,6 +54,17 @@ func _initialize() -> void:
 		await _type(key)
 	_check(typed[0] == "MFZ", "typing initials works (got '%s')" % typed[0])
 	entry.queue_free()
+	# Hidden cheat on the settings screen: typing TURBO unlocks every sector.
+	var save: Node = root.get_node("Save")
+	var before: int = save.unlocked
+	var menu_main: Node = root.get_node("Main")
+	menu_main.call("show_settings")
+	await process_frame
+	for key in [KEY_T, KEY_U, KEY_R, KEY_B, KEY_O]:
+		await _type(key)
+	_check(save.unlocked == 10, "TURBO cheat unlocks all sectors")
+	save.unlocked = before
+	save.save_data()
 	print("ui checks done, failures: %d" % _fail)
 	quit(1 if _fail > 0 else 0)
 

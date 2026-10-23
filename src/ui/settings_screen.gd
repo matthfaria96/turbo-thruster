@@ -42,6 +42,47 @@ func _ready() -> void:
 			_refresh(row))
 
 
+## Hidden cheat: typing this word on the settings screen unlocks every
+## sector. It avoids W/A/S/D so typing it never moves the menu focus.
+const CHEAT := "TURBO"
+
+var _typed := ""
+
+
+func _input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo or key.unicode <= 0:
+		return
+	_typed = (_typed + char(key.unicode).to_upper()).right(CHEAT.length())
+	if _typed == CHEAT:
+		_typed = ""
+		_cheat_unlock()
+
+
+func _cheat_unlock() -> void:
+	var changed := Save.unlock_all()
+	Sfx.play("pickup", 0.0, 1.0)
+	var text := "CÓDIGO ATIVADO — TODOS OS SETORES LIBERADOS" if changed else "TODOS OS SETORES JÁ ESTÃO LIBERADOS"
+	var toast := UiStyle.label(text, 22, UiStyle.GOLD, HORIZONTAL_ALIGNMENT_CENTER, true)
+	toast.label_settings.outline_size = 8
+	toast.label_settings.outline_color = Color(0.2, 0.1, 0.0)
+	toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	toast.offset_top = 64
+	toast.offset_left = -400
+	toast.offset_right = 400
+	add_child(toast)
+	var flash := UiStyle.full_rect(ColorRect.new()) as ColorRect
+	flash.color = Color(1.0, 0.85, 0.3, 0.35)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(flash)
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(flash, "color:a", 0.0, 0.6)
+	tween.tween_property(toast, "modulate:a", 0.0, 0.6).set_delay(2.2)
+	tween.chain().tween_callback(func() -> void:
+		flash.queue_free()
+		toast.queue_free())
+
+
 func _add_row(parent: Control, text: String, key: String, values: Array) -> void:
 	var row := HBoxContainer.new()
 	var name_label := UiStyle.label(text, 22, UiStyle.TEXT)

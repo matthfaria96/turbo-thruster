@@ -4,6 +4,9 @@ extends Node
 signal settings_changed
 
 const SAVE_PATH := "user://turbo_thruster.json"
+## Automated tests and screenshot runs use their own file so they never
+## touch the player's progress.
+const TEST_SAVE_PATH := "user://turbo_thruster_test.json"
 const SAVE_VERSION := 3
 const MIN_WINDOW := Vector2i(960, 540)
 const WINDOW_SIZES: Array[Vector2i] = [
@@ -31,7 +34,12 @@ const ARCADE_SLOTS := 5
 const MEDAL_IDS := ["untouched", "exterminator", "multiplier"]
 
 
+var save_path := SAVE_PATH
+
+
 func _ready() -> void:
+	if _is_automated():
+		save_path = TEST_SAVE_PATH
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	InputSetup.register()
 	load_data()
@@ -44,6 +52,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key and key.pressed and not key.echo and key.physical_keycode == KEY_F11:
 		set_setting("display_mode", 0 if settings.display_mode == 1 else 1)
 		get_viewport().set_input_as_handled()
+
+
+func _is_automated() -> bool:
+	var args := OS.get_cmdline_args()
+	if "-s" in args or "--script" in args:
+		return true
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--shot"):
+			return true
+	return false
 
 
 func set_setting(key: String, value: Variant) -> void:
@@ -116,6 +134,15 @@ func record_arcade(name: String, score: int, seconds: int) -> int:
 	return pos if pos < ARCADE_SLOTS else -1
 
 
+## Cheat: unlock every campaign sector. Returns false if all were open.
+func unlock_all() -> bool:
+	if unlocked >= Levels.count():
+		return false
+	unlocked = Levels.count()
+	save_data()
+	return true
+
+
 func record_result(level: int, score: int, rank: String) -> bool:
 	var key := str(level)
 	var prev: Dictionary = best.get(key, {})
@@ -128,9 +155,9 @@ func record_result(level: int, score: int, rank: String) -> bool:
 
 
 func load_data() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
+	if not FileAccess.file_exists(save_path):
 		return
-	var text := FileAccess.get_file_as_string(SAVE_PATH)
+	var text := FileAccess.get_file_as_string(save_path)
 	var parsed: Variant = JSON.parse_string(text)
 	if typeof(parsed) != TYPE_DICTIONARY:
 		push_warning("Save file is corrupt; using defaults.")
@@ -186,7 +213,7 @@ func _coerce(value: Variant, fallback: Variant) -> Variant:
 
 
 func save_data() -> void:
-	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	if file == null:
 		push_warning("Could not write save file: %s" % FileAccess.get_open_error())
 		return
