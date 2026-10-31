@@ -155,7 +155,7 @@ func _animate_charge() -> void:
 	_orb.visible = charge > 0.02 and alive
 	var flick := 0.9 + 0.1 * sin(Time.get_ticks_msec() * (0.04 if charge >= 1.0 else 0.02))
 	_orb.scale = Vector3.ONE * (0.2 + charge * 0.6) * flick
-	_orb.set_instance_shader_parameter("tint", NOVA_COLOR.lerp(Color(1, 1, 1), charge * charge))
+	Meshes.set_param(_orb, "tint", NOVA_COLOR.lerp(Color(1, 1, 1), charge * charge))
 	_suction.emitting = charge > 0.05 and alive
 	_suction.amount_ratio = clampf(charge, 0.2, 1.0)
 

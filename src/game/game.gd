@@ -68,6 +68,8 @@ var _autoplay := false
 var _leaving := false
 var _start_s := 0.0
 var _gallery := false
+var _pointer_locked := false
+var _pointer_asked := false
 var _scorch_t := 0.0
 var _scorch_th := 0.0
 var _lane_t := 0.0
@@ -182,6 +184,13 @@ func _notification(what: int) -> void:
 		_pause()
 
 
+func _input(event: InputEvent) -> void:
+	# A click inside the page is the user gesture browsers want before locking the pointer.
+	var mb := event as InputEventMouseButton
+	if mb and mb.pressed and _pointer_asked and not _pointer_locked:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause") and state in ACTIVE_STATES and not get_tree().paused:
 		get_viewport().set_input_as_handled()
@@ -197,7 +206,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	var dt := minf(delta, 1.0 / 30.0)
 	var playing := state in ACTIVE_STATES and not get_tree().paused
-	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if playing else Input.MOUSE_MODE_VISIBLE
+	_update_mouse(playing)
 	hitstop_t = maxf(0.0, hitstop_t - dt)
 	var world_dt := dt * time_scale * (0.12 if hitstop_t > 0.0 else 1.0)
 	slow_carry = dt - world_dt
@@ -732,8 +741,32 @@ func on_player_died() -> void:
 
 # --------------------------------------------------------- pause, overlays
 
+## Hides the cursor during play. In the browser the hidden cursor drifts out
+## of the page while steering with the keys, and clicks (fire, charge) then
+## land on the browser instead of the game, so the pointer is locked to the
+## page instead; losing the lock (Esc, switching tabs) pauses like focus loss.
+func _update_mouse(playing: bool) -> void:
+	if not OS.has_feature("web"):
+		Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if playing else Input.MOUSE_MODE_VISIBLE
+		return
+	if not playing:
+		_pointer_locked = false
+		_pointer_asked = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		return
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		_pointer_locked = true
+	elif _pointer_locked:
+		_pause()
+	elif not _pointer_asked:
+		_pointer_asked = true
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
 func _pause() -> void:
 	get_tree().paused = true
+	_pointer_locked = false
+	_pointer_asked = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var buttons: Array = [["Continuar", _resume]]
 	if is_arcade():

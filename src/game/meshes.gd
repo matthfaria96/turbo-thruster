@@ -27,6 +27,17 @@ static func _cached(key: String, shader: Shader, params: Dictionary) -> ShaderMa
 	return _materials[key]
 
 
+## Per-object shader value (hit flash, fade, tint...). The first call gives the
+## object its own copy of its material: instance uniforms would avoid that, but
+## WebGL only has room for them on a few dozen objects, and every object past
+## that rendered with no visuals.
+static func set_param(g: GeometryInstance3D, param: StringName, value: Variant) -> void:
+	if not g.has_meta(&"own_material"):
+		g.material_override = g.material_override.duplicate()
+		g.set_meta(&"own_material", true)
+	(g.material_override as ShaderMaterial).set_shader_parameter(param, value)
+
+
 static func _named(name: String, child: Node3D) -> Node3D:
 	child.name = name
 	return child
@@ -41,8 +52,9 @@ static func aura(color: Color, size: float, energy := 0.9) -> MeshInstance3D:
 	mi.mesh = quad
 	var mat := additive(energy, 0.0).duplicate() as ShaderMaterial
 	mat.render_priority = -2
+	mat.set_shader_parameter("tint", color)
 	mi.material_override = mat
-	mi.set_instance_shader_parameter("tint", color)
+	mi.set_meta(&"own_material", true)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 

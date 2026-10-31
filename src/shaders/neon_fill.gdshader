@@ -6,9 +6,9 @@ render_mode unshaded, blend_add, depth_draw_never, cull_disabled;
 
 uniform vec3 color : source_color = vec3(1.0);
 uniform float strength = 0.22;
-instance uniform float hit = 0.0;
-instance uniform float fade = 1.0;
-instance uniform float phase = 0.0;
+uniform float hit = 0.0;
+uniform float fade = 1.0;
+uniform float phase = 0.0;
 
 void fragment() {
 	float pulse = 0.5 + 0.5 * sin(TIME * 6.0 + phase);

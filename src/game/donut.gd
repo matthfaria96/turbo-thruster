@@ -62,7 +62,7 @@ func _place() -> void:
 	_ring.rotation.z += 0.25
 	var fade := 1.0 - smoothstep(0.75, 1.0, age / LIFE)
 	for g in _geo:
-		g.set_instance_shader_parameter("fade", fade)
+		Meshes.set_param(g, "fade", fade)
 
 
 func _inside(e_s: float, e_th: float, e_h: float, e_radius: float) -> bool:

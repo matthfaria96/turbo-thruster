@@ -7,7 +7,7 @@ render_mode unshaded, blend_add, depth_draw_never, cull_disabled;
 uniform float energy = 2.5;
 uniform float core = 0.0;
 uniform float flare = 0.0;
-instance uniform vec4 tint : source_color = vec4(1.0);
+uniform vec4 tint : source_color = vec4(1.0);
 
 void vertex() {
 	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);

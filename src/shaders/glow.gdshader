@@ -6,8 +6,8 @@ render_mode unshaded, cull_back;
 
 uniform vec3 color : source_color = vec3(1.0);
 uniform float energy = 1.5;
-instance uniform float hit = 0.0;
-instance uniform float fade = 1.0;
+uniform float hit = 0.0;
+uniform float fade = 1.0;
 
 void fragment() {
 	float rim = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);

@@ -9,9 +9,9 @@ uniform vec3 color : source_color = vec3(1.0);
 uniform float energy = 2.4;
 uniform float width = 0.07;
 uniform float min_pixel = 0.0022;
-instance uniform float hit = 0.0;
-instance uniform float fade = 1.0;
-instance uniform float phase = 0.0;
+uniform float hit = 0.0;
+uniform float fade = 1.0;
+uniform float phase = 0.0;
 
 varying float near_fade;
 

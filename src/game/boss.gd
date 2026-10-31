@@ -119,15 +119,15 @@ func _animate(dt: float) -> void:
 	_model.get_node("Core").rotation += Vector3(0.4, 0.7, 0.0) * dt
 	var fade := 0.18 if cloaked else 1.0
 	for g in _geometry:
-		g.set_instance_shader_parameter("hit", _flash)
-		g.set_instance_shader_parameter("fade", fade)
+		Meshes.set_param(g, "hit", _flash)
+		Meshes.set_param(g, "fade", fade)
 	if _parts_root:
 		_parts_root.rotation.z += dt * 0.8
 		for p in parts:
 			p.flash = maxf(0.0, float(p.flash) - dt * 8.0)
 			for g: GeometryInstance3D in p.geo:
-				g.set_instance_shader_parameter("hit", p.flash)
-				g.set_instance_shader_parameter("fade", fade)
+				Meshes.set_param(g, "hit", p.flash)
+				Meshes.set_param(g, "fade", fade)
 
 
 ## Damage to the core, reduced while protective parts survive.

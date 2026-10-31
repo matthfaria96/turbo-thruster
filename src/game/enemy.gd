@@ -77,7 +77,7 @@ func setup(p_kind: String, p_s: float, p_th: float, phase: float, difficulty: fl
 	_orbit = _model.get_node_or_null("Orbit")
 	_geometry = Meshes.geometry_of(_model)
 	for g in _geometry:
-		g.set_instance_shader_parameter("phase", _phase * 3.0)
+		Meshes.set_param(g, "phase", _phase * 3.0)
 	_model.scale = Vector3.ONE * 0.01
 	if kind in ["drone", "weaver", "tank", "seeker", "swarm", "drifter"]:
 		var trail := Fx.make_trail(spec.color, 18, 0.25, 0.5 if kind == "tank" else 0.3)
@@ -364,11 +364,11 @@ func _animate(dt: float, game: Game) -> void:
 	if not is_equal_approx(fade, _fade_written):
 		_fade_written = fade
 		for g in _geometry:
-			g.set_instance_shader_parameter("fade", fade)
+			Meshes.set_param(g, "fade", fade)
 	if not is_equal_approx(flash, _hit_written):
 		_hit_written = flash
 		for g in _geometry:
-			g.set_instance_shader_parameter("hit", flash)
+			Meshes.set_param(g, "hit", flash)
 	_flash = maxf(0.0, _flash - dt * 9.0)
 
 

@@ -37,7 +37,7 @@ func _process(delta: float) -> void:
 		if cam and node.global_position.distance_squared_to(cam.global_position) > 0.01:
 			node.look_at(cam.global_position, cam.global_transform.basis.y)
 		for g: GeometryInstance3D in shock.geo:
-			g.set_instance_shader_parameter("fade", 1.0 - k)
+			Meshes.set_param(g, "fade", 1.0 - k)
 		if k >= 1.0:
 			node.queue_free()
 	_shocks = _shocks.filter(func(s: Dictionary) -> bool: return s.t < SHOCK_TIME)
@@ -177,7 +177,7 @@ func lightning(a: Vector3, b: Vector3, color: Color, life := 0.22, width := 0.08
 	mi.custom_aabb = AABB(Vector3.ONE * -1e5, Vector3.ONE * 2e5)
 	add_child(mi)
 	var tween := mi.create_tween()
-	tween.tween_method(func(v: float) -> void: mi.set_instance_shader_parameter("fade", v), 1.0, 0.0, life)
+	tween.tween_method(func(v: float) -> void: Meshes.set_param(mi, "fade", v), 1.0, 0.0, life)
 	tween.tween_callback(mi.queue_free)
 
 
