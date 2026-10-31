@@ -3,6 +3,8 @@
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, skip_vertex_transform;
 
+#include "res://src/shaders/compat.gdshaderinc"
+
 uniform float energy = 3.0;
 uniform float core = 0.6;
 
@@ -28,4 +30,5 @@ void fragment() {
 	ALBEDO = c * energy * a;
 	ALBEDO *= near_fade;
 	ALPHA = COLOR.a * a * near_fade;
+	ALBEDO = compat_color(ALBEDO);
 }

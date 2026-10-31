@@ -1,6 +1,8 @@
 // Deep-space nebula behind the translucent tunnel. Kept dim.
 shader_type sky;
 
+#include "res://src/shaders/compat.gdshaderinc"
+
 uniform vec3 color_a : source_color = vec3(0.05, 0.12, 0.25);
 uniform vec3 color_b : source_color = vec3(0.18, 0.05, 0.22);
 uniform float intensity = 1.0;
@@ -37,4 +39,5 @@ void sky() {
 	vec3 neb = mix(color_a, color_b, smoothstep(0.35, 0.75, m)) * smoothstep(0.4, 0.85, n) * 0.9;
 	float stars = pow(hash(floor(d * 300.0)), 400.0) * 1.2;
 	COLOR = (neb + vec3(stars) * 0.6) * intensity;
+	COLOR = compat_color(COLOR);
 }

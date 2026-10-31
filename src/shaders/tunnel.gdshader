@@ -5,6 +5,8 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled, blend_mix, depth_draw_never;
 
+#include "res://src/shaders/compat.gdshaderinc"
+
 uniform vec3 tint : source_color = vec3(0.3, 0.5, 1.0);
 uniform float brightness = 1.0;
 uniform float flash = 0.0;
@@ -58,4 +60,5 @@ void fragment() {
 	vec3 panel = tint * 0.035 + vec3(0.0, 0.004, 0.012);
 	ALBEDO = (panel + lines + tint * streak) * fade + vec3(flash) * (0.3 + major);
 	ALPHA = clamp(0.7 + light * 0.4 + wave + streak * 0.3, 0.0, 1.0) * smoothstep(0.06, 0.45, fade);
+	ALBEDO = compat_color(ALBEDO);
 }

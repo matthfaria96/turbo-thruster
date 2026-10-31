@@ -3,6 +3,8 @@
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, skip_vertex_transform;
 
+#include "res://src/shaders/compat.gdshaderinc"
+
 uniform vec3 color : source_color = vec3(1.0);
 uniform float energy = 2.4;
 uniform float width = 0.07;
@@ -29,4 +31,5 @@ void fragment() {
 	float core = smoothstep(0.0, 0.6, edge);
 	vec3 c = mix(color, vec3(1.0), 0.12 * core + hit * 0.35);
 	ALBEDO = c * energy * (0.35 + core) * (1.0 + pulse * 0.3) * fade * near_fade;
+	ALBEDO = compat_color(ALBEDO);
 }

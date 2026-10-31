@@ -2,6 +2,8 @@
 shader_type spatial;
 render_mode unshaded, blend_add, cull_disabled, depth_draw_never;
 
+#include "res://src/shaders/compat.gdshaderinc"
+
 uniform vec3 color : source_color = vec3(0.4, 0.85, 1.0);
 uniform float intensity = 1.0;
 
@@ -14,4 +16,5 @@ void fragment() {
 	vec3 c = mix(color, vec3(1.0), smoothstep(0.4, 0.0, r));
 	ALBEDO = c * (0.35 + swirl * 0.9) * mask * intensity * 1.8;
 	ALPHA = mask;
+	ALBEDO = compat_color(ALBEDO);
 }

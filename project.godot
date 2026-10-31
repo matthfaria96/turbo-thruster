@@ -23,6 +23,7 @@ window/size/resizable=true
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/vsync/vsync_mode=1
+window/dpi/allow_hidpi.web=false
 
 [rendering]
 

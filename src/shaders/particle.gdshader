@@ -2,6 +2,8 @@
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled;
 
+#include "res://src/shaders/compat.gdshaderinc"
+
 uniform float energy = 2.5;
 uniform float core = 0.0;
 uniform float flare = 0.0;
@@ -25,4 +27,5 @@ void fragment() {
 	vec3 c = mix(COLOR.rgb * tint.rgb, vec3(1.0), core * smoothstep(0.45, 0.8, d));
 	ALBEDO = c * energy * a;
 	ALPHA = COLOR.a * tint.a * a;
+	ALBEDO = compat_color(ALBEDO);
 }
