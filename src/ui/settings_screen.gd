@@ -18,9 +18,11 @@ func _init(p_main: Node) -> void:
 	list.add_theme_constant_override("separation", 6)
 	panel.add_child(list)
 	_add_row(list, "Modo de tela", "display_mode", ["Janela", "Tela cheia"])
-	_add_row(list, "Tamanho da janela", "window_size",
-		Save.WINDOW_SIZES.map(func(v: Vector2i) -> String: return "%d × %d" % [v.x, v.y]))
-	_add_row(list, "VSync", "vsync", [false, true])
+	# On the web the page sizes the canvas and the browser paces frames.
+	if not OS.has_feature("web"):
+		_add_row(list, "Tamanho da janela", "window_size",
+			Save.WINDOW_SIZES.map(func(v: Vector2i) -> String: return "%d × %d" % [v.x, v.y]))
+		_add_row(list, "VSync", "vsync", [false, true])
 	_add_row(list, "Estilo de som", "audio_style", Sfx.STYLE_NAMES)
 	_add_row(list, "Música", "music", PERCENT_STEPS)
 	_add_row(list, "Efeitos sonoros", "sfx", PERCENT_STEPS)

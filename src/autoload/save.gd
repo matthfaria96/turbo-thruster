@@ -43,6 +43,9 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	InputSetup.register()
 	load_data()
+	# Browsers only allow fullscreen after a click or key press, so the web build starts in the page.
+	if OS.has_feature("web"):
+		settings.display_mode = 0
 	get_window().min_size = MIN_WINDOW
 	apply_display()
 
@@ -73,9 +76,13 @@ func set_setting(key: String, value: Variant) -> void:
 
 
 func apply_display() -> void:
+	var win := get_window()
+	# On the web the page sizes the canvas and the browser paces frames.
+	if OS.has_feature("web"):
+		win.mode = Window.MODE_FULLSCREEN if settings.display_mode == 1 else Window.MODE_WINDOWED
+		return
 	DisplayServer.window_set_vsync_mode(
 		DisplayServer.VSYNC_ENABLED if settings.vsync else DisplayServer.VSYNC_DISABLED)
-	var win := get_window()
 	if settings.display_mode == 1:
 		win.mode = Window.MODE_FULLSCREEN
 		return

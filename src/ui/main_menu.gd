@@ -13,10 +13,13 @@ func _init(p_main: Node) -> void:
 	col.add_child(spacer(36))
 	var play := UiStyle.button("Campanha", main.show_level_select)
 	var arcade := UiStyle.button("Modo Arcade", main.start_arcade)
-	for b in [play, arcade,
+	var buttons := [play, arcade,
 			UiStyle.button("Configurações", main.show_settings),
-			UiStyle.button("Controles", main.show_controls),
-			UiStyle.button("Sair", main.quit)]:
+			UiStyle.button("Controles", main.show_controls)]
+	# A browser tab cannot be closed by the game.
+	if not OS.has_feature("web"):
+		buttons.append(UiStyle.button("Sair", main.quit))
+	for b in buttons:
 		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		col.add_child(b)
 	var progress := "Setores liberados: %d / %d" % [Save.unlocked, Levels.count()]
