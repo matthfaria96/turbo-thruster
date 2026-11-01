@@ -354,6 +354,7 @@ body.match.touch #view {
 
 #status-notice {
 	display: none;
+	white-space: pre-line;
 	max-width: 80vw;
 	padding: 1rem;
 	border-radius: 0.6rem;
@@ -814,7 +815,10 @@ const engine = new Engine(GODOT_CONFIG);
 
 	function displayFailureNotice(err) {
 		console.error(err);
-		const message = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Ocorreu um erro desconhecido.');
+		let message = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Ocorreu um erro desconhecido.');
+		if (err instanceof Error) {
+			message = 'Não foi possível iniciar o jogo:\n' + message + lockdownHint;
+		}
 		statusNotice.textContent = message;
 		statusNotice.style.display = 'block';
 		document.getElementById('status-progress').style.display = 'none';
@@ -822,9 +826,26 @@ const engine = new Engine(GODOT_CONFIG);
 		initializing = false;
 	}
 
-	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	// What to do about each missing piece, in the player's words. Lockdown Mode on
+	// iPhone turns off both WebGL and WebAssembly, the usual cause there.
+	const lockdownHint = isIOS
+		? '\n\nNo iPhone: use o iOS 15 ou mais novo e, se o Modo de Isolamento estiver ligado, '
+			+ 'desligue-o para este site (Ajustes do Safari para turbothruster.witchmymac.com).'
+		: '';
+	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED }).map((m) => {
+		if (m.startsWith('WebGL2')) {
+			return '• Gráficos 3D (WebGL 2) desativados ou não suportados';
+		}
+		if (m.startsWith('Secure Context')) {
+			return '• Conexão segura: abra pelo endereço https://turbothruster.witchmymac.com';
+		}
+		return '• ' + m;
+	});
+	if (typeof WebAssembly !== 'object') {
+		missing.push('• WebAssembly desativado ou não suportado');
+	}
 	if (missing.length !== 0) {
-		displayFailureNotice('Este navegador não consegue rodar o jogo. Falta:\n' + missing.join('\n'));
+		displayFailureNotice('Este navegador não consegue rodar o jogo:\n' + missing.join('\n') + lockdownHint);
 		return;
 	}
 
