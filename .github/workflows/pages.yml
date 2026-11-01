@@ -45,6 +45,8 @@ jobs:
           mkdir -p build/web
           godot --headless --export-release "Web" build/web/index.html
           test -s build/web/index.wasm && test -s build/web/index.pck
+          # Link preview image and opaque icons served next to the game.
+          cp web/static/*.png web/static/*.jpg build/web/
 
       - uses: actions/upload-pages-artifact@v3
         with:
