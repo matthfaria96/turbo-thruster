@@ -120,6 +120,41 @@ func _ready() -> void:
 	var sub := "Sobreviva" if is_arcade() else String(level.name).to_upper()
 	hud.announce(heading, sub, INTRO_TIME - 0.4)
 	_sync_transforms(0.0)
+	_prewarm_shaders()
+
+
+## Draws one of every model and effect far down the tunnel during the intro:
+## browsers (above all on phones) compile a shader the first time it is drawn,
+## which froze the game for a moment at the first explosion, boss or portal.
+func _prewarm_shaders() -> void:
+	# Just in front of the camera so nothing is culled; models are shrunk to a
+	# speck and the few sparks hide under the sector title.
+	var holder := Node3D.new()
+	camera.add_child(holder)
+	holder.position = Vector3(0, 0, -6)
+	holder.scale = Vector3.ONE * 0.02
+	var at := camera.global_transform * Vector3(0, 0, -14)
+	var models: Array[Node3D] = [Meshes.boss(level.tint), Meshes.portal(), Meshes.shield_bubble(),
+		Meshes.barrier(1.0), Meshes.rotor(), Meshes.pulse_ring(), Meshes.aura(Color.WHITE, 1.0),
+		Meshes.boss_part("cube", Color.WHITE)]
+	for kind: String in EnemyTypes.TYPES:
+		if kind not in ["barrier", "rotor", "pulse_ring"]:
+			models.append(Meshes.enemy(kind))
+	for kind: String in EnemyTypes.POWERUPS:
+		models.append(Meshes.pickup(kind))
+	for m in models:
+		holder.add_child(m)
+	fx.sparks(at, Color.WHITE, 4)
+	fx.shards(at, Color.WHITE, 2)
+	fx.glow(at, Color.WHITE, 1)
+	fx.embers(at, Color.WHITE, 2)
+	fx.shockwave(at, Color.WHITE, 1.0)
+	fx.lightning(at, at + Vector3.UP, Color.WHITE, 0.2)
+	# Text: compiles the label shader and draws every glyph a score popup uses.
+	var label := fx.popup(at, "+0123456789 ONDALIMPA", Color.WHITE)
+	label.modulate.a = 0.01
+	label.outline_modulate.a = 0.01
+	get_tree().create_timer(0.4, false).timeout.connect(holder.queue_free)
 
 
 func _build_world() -> void:

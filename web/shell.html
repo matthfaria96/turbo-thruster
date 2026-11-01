@@ -481,6 +481,22 @@ body.match .toast {
 
 		<script src="$GODOT_URL"></script>
 		<script>
+// Keep a handle on the engine's AudioContext so a tap can resume it (iOS
+// suspends audio until a touch and again whenever the app goes to the background).
+const ttAudioContexts = [];
+['AudioContext', 'webkitAudioContext'].forEach((name) => {
+	const Native = window[name];
+	if (typeof Native !== 'function') {
+		return;
+	}
+	window[name] = class extends Native {
+		constructor(...args) {
+			super(...args);
+			ttAudioContexts.push(this);
+		}
+	};
+});
+
 const GODOT_CONFIG = $GODOT_CONFIG;
 const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 const engine = new Engine(GODOT_CONFIG);
@@ -511,7 +527,11 @@ const engine = new Engine(GODOT_CONFIG);
 	// so the game can share the screen with the touch pad during a run.
 	// Phones render at up to 2x for sharp text; desktops at 1x for frame rate.
 	function pixelRatio() {
-		return coarse ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+		if (!coarse) {
+			return 1;
+		}
+		const cap = RATIO_STEPS[ratioStep] || 1;
+		return Math.min(window.devicePixelRatio || 1, cap);
 	}
 
 	function fitCanvas() {
@@ -524,6 +544,112 @@ const engine = new Engine(GODOT_CONFIG);
 			canvas.height = h;
 		}
 	}
+
+	// --------------------------------------------------------------- audio
+	// iPhone: Web Audio is silent with the ring/silent switch on unless the page
+	// asks for "playback" audio (iOS 17+), or keeps a silent <audio> playing
+	// (older iOS). Contexts also need a resume() inside a touch.
+	if (navigator.audioSession) {
+		try {
+			navigator.audioSession.type = 'playback';
+		} catch (e) {
+			// Not allowed here: the silent element below still helps.
+		}
+	}
+
+	let keepAlive = null;
+	function silentWav() {
+		const rate = 8000;
+		const samples = rate / 2;
+		const buffer = new ArrayBuffer(44 + samples);
+		const v = new DataView(buffer);
+		const text = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+		text(0, 'RIFF'); v.setUint32(4, 36 + samples, true); text(8, 'WAVE');
+		text(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+		v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+		text(36, 'data'); v.setUint32(40, samples, true);
+		for (let i = 0; i < samples; i++) {
+			v.setUint8(44 + i, 128);
+		}
+		return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+	}
+
+	function unlockAudio() {
+		if (isIOS && !keepAlive) {
+			keepAlive = new Audio(silentWav());
+			keepAlive.loop = true;
+			keepAlive.setAttribute('playsinline', '');
+		}
+		if (keepAlive && keepAlive.paused) {
+			keepAlive.play().catch(() => {});
+		}
+		ttAudioContexts.forEach((ctx) => {
+			if (ctx.state !== 'running' && ctx.state !== 'closed') {
+				ctx.resume().catch(() => {});
+			}
+		});
+	}
+
+	['pointerdown', 'touchend', 'keydown'].forEach((name) => {
+		document.addEventListener(name, unlockAudio, { capture: true, passive: true });
+	});
+
+	// ------------------------------------------------------ dynamic resolution
+	// Phones start sharp (up to 2x) and step the canvas down while a run drops
+	// under ~45 fps, back up when there is room. The level is kept per device.
+	const RATIO_STEPS = [2, 1.7, 1.45, 1.2, 1, 0.85];
+	let ratioStep = 0;
+	try {
+		ratioStep = Math.min(RATIO_STEPS.length - 1, Math.max(0, parseInt(localStorage.getItem('tt-ratio-step') || '0', 10) || 0));
+	} catch (e) {
+		ratioStep = 0;
+	}
+	let frameAvg = 16.7;
+	let lastFrame = 0;
+	let calmSince = 0;
+	let changedAt = 0;
+
+	function watchFrames(now) {
+		requestAnimationFrame(watchFrames);
+		if (!coarse || !body.classList.contains('match') || document.visibilityState !== 'visible') {
+			lastFrame = 0;
+			return;
+		}
+		if (lastFrame) {
+			const dt = Math.min(now - lastFrame, 100);
+			frameAvg += (dt - frameAvg) * 0.05;
+		}
+		lastFrame = now;
+		if (now - changedAt < 3000) {
+			return;
+		}
+		if (frameAvg > 22 && ratioStep < RATIO_STEPS.length - 1) {
+			setRatioStep(ratioStep + 1, now);
+		} else if (frameAvg < 15) {
+			if (!calmSince) {
+				calmSince = now;
+			} else if (now - calmSince > 8000 && ratioStep > 0) {
+				setRatioStep(ratioStep - 1, now);
+			}
+		} else {
+			calmSince = 0;
+		}
+	}
+
+	function setRatioStep(step, now) {
+		ratioStep = step;
+		changedAt = now;
+		calmSince = 0;
+		frameAvg = 16.7;
+		try {
+			localStorage.setItem('tt-ratio-step', String(step));
+		} catch (e) {
+			// Private mode: start sharp again next time.
+		}
+		fitCanvas();
+	}
+
+	requestAnimationFrame(watchFrames);
 
 	new ResizeObserver(fitCanvas).observe(view);
 	window.addEventListener('resize', fitCanvas);

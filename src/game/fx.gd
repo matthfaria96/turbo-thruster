@@ -93,7 +93,7 @@ func embers(pos: Vector3, color: Color, amount := 20, speed := 5.0) -> void:
 	_emit(pos, amount, 1.6, mat, _glow_mesh, Meshes.additive(2.6, 0.5))
 
 
-func popup(pos: Vector3, text: String, color: Color) -> void:
+func popup(pos: Vector3, text: String, color: Color) -> Label3D:
 	var label := Label3D.new()
 	label.text = text
 	label.font = UiStyle.display_font()
@@ -113,6 +113,7 @@ func popup(pos: Vector3, text: String, color: Color) -> void:
 	tween.tween_property(label, "scale", Vector3.ONE * 1.2, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(label, "modulate:a", 0.0, 0.6).set_delay(0.25)
 	tween.tween_callback(label.queue_free)
+	return label
 
 
 ## Particles pulled into a point (charge-up at the ship's nose).
@@ -256,8 +257,10 @@ func _emit(pos: Vector3, amount: int, life: float, mat: ParticleProcessMaterial,
 	p.material_override = draw_mat
 	p.local_coords = false
 	p.visibility_aabb = AABB(Vector3(-30, -30, -30), Vector3(60, 60, 60))
-	p.finished.connect(p.queue_free)
 	add_child(p)
+	# `finished` never fired for these bursts, so every explosion stayed in the
+	# scene; free them once their particles are gone (pauses with the game).
+	get_tree().create_timer(life + 0.3, false).timeout.connect(p.queue_free)
 	p.global_position = pos
 	p.emitting = true
 

@@ -3,7 +3,8 @@
 // and gentle edge darkening. Drawn by a ColorRect over the 3D view.
 shader_type canvas_item;
 
-uniform sampler2D screen : hint_screen_texture, filter_linear_mipmap;
+// No mipmaps: every tap reads the full-size screen, and building them cost a pass each frame.
+uniform sampler2D screen : hint_screen_texture, filter_linear;
 uniform float aberration = 0.0;   // 0..1
 uniform float warp = 0.0;         // 0..1 radial blur strength
 uniform vec4 pulse_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);

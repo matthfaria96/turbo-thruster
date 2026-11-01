@@ -44,6 +44,8 @@ func _process(delta: float) -> void:
 	_pulse = move_toward(_pulse, 0.0, delta * 2.2)
 	var fx := float(Save.settings.get("glow", 1.0))
 	_mat.set_shader_parameter("aberration", (0.12 + _speed_k * 0.45 + _kick * 2.0) * fx)
-	_mat.set_shader_parameter("warp", (_speed_k * _speed_k * 0.4 + _kick * 0.8) * fx)
+	# The radial warp reads the screen 18 times per pixel: too much for phones.
+	var warp := 0.0 if Mobile.enabled else (_speed_k * _speed_k * 0.4 + _kick * 0.8) * fx
+	_mat.set_shader_parameter("warp", warp)
 	_mat.set_shader_parameter("pulse", _pulse * fx)
 	_mat.set_shader_parameter("pulse_color", _pulse_color)

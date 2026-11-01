@@ -27,6 +27,8 @@ func _ready() -> void:
 		return
 	get_window().min_size = Vector2i.ZERO
 	get_window().content_scale_size = DESIGN_SIZE
+	# Phone GPUs: no multisampling (the neon is mostly glow and lines anyway).
+	get_viewport().msaa_3d = Viewport.MSAA_DISABLED
 	if _web:
 		_input_cb = JavaScriptBridge.create_callback(_on_page_input)
 		JavaScriptBridge.get_interface("window").ttInput = _input_cb
