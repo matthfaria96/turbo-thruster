@@ -17,6 +17,8 @@ var boss_name := ""
 var boss_ratio := -1.0
 var _t := 0.0
 var _k := 1.0
+## Phone held upright: scale by width and stack the top readouts.
+var _tall := false
 
 
 func _ready() -> void:
@@ -32,16 +34,19 @@ func push(next_state: Dictionary, dt: float) -> void:
 func _draw() -> void:
 	if state.is_empty():
 		return
-	_k = size.y / 720.0
+	_tall = size.x < size.y
+	_k = size.x / 720.0 if _tall else size.y / 720.0
 	_draw_frame()
 	_draw_score()
 	_draw_act_strip()
 	_draw_kills()
 	_draw_distance()
 	_draw_speed_dial()
-	_draw_ring_gauge(Vector2(150, size.y / _k - 92), "CASCO", int(state.hull), Player.MAX_HULL, CYAN,
+	# Phone on its side: the touch buttons cover the bottom corners.
+	var ring_y := size.y / _k - (385.0 if Mobile.enabled and not _tall else 92.0)
+	_draw_ring_gauge(Vector2(150, ring_y), "CASCO", int(state.hull), Player.MAX_HULL, CYAN,
 		float(state.shield) / 10.0, Color(0.4, 0.8, 1.0))
-	_draw_ring_gauge(Vector2(size.x / _k - 150, size.y / _k - 92), "ARMA", int(state.weapon),
+	_draw_ring_gauge(Vector2(size.x / _k - 150, ring_y), "ARMA", int(state.weapon),
 		Player.MAX_WEAPON, GREEN, float(state.rapid) / 9.0, Color(1.0, 0.6, 0.15))
 	_draw_reticle()
 	_draw_hazard()
@@ -121,6 +126,10 @@ func _draw_score() -> void:
 	_lcd(Vector2(cx, 66), str(int(state.score)), 30, WHITE, HORIZONTAL_ALIGNMENT_CENTER, 8)
 	var mult := int(state.multiplier)
 	var pulse := 1.0 + (0.2 if fmod(_t * 2.0, 1.0) < 0.1 and mult > 1 else 0.0)
+	if _tall:
+		_label(Vector2(cx - 6, 96), "MULT x", 13, DIM, HORIZONTAL_ALIGNMENT_RIGHT, 120)
+		_lcd(Vector2(cx, 98), str(mult), 20 * pulse, GREEN, HORIZONTAL_ALIGNMENT_LEFT, 2, 120)
+		return
 	_label(Vector2(cx + 178, 28), "MULT", 13, DIM, HORIZONTAL_ALIGNMENT_LEFT, 120)
 	_label(Vector2(cx + 178, 64), "x", 20, GREEN, HORIZONTAL_ALIGNMENT_LEFT, 20)
 	_lcd(Vector2(cx + 194, 66), str(mult), 24 * pulse, GREEN, HORIZONTAL_ALIGNMENT_LEFT, 2, 120)
@@ -130,7 +139,7 @@ func _draw_act_strip() -> void:
 	var cx := size.x / _k * 0.5
 	var width := 460.0
 	var left := cx - width * 0.5
-	var y := 96.0
+	var y := 128.0 if _tall else 96.0
 	if boss_ratio >= 0.0:
 		_label(Vector2(cx, y), "!! CHEFE :: " + boss_name.to_upper() + " !!", 17, RED, HORIZONTAL_ALIGNMENT_CENTER, 700)
 		_bar(Vector2(left - 40, y + 8), width + 80, 10, boss_ratio, RED)

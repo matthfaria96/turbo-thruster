@@ -155,10 +155,18 @@ static func wire(b: BaseButton) -> void:
 
 static func hint_bar(text: String) -> Label:
 	var l := label(text, 17, DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	# Keyboard hints mean nothing on a touch screen.
+	l.visible = not Mobile.enabled
 	l.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	l.offset_top = -48
 	l.offset_bottom = -18
 	return l
+
+
+## Phone held upright: screens stack their parts instead of placing them side by side.
+static func is_tall() -> bool:
+	var view := (Engine.get_main_loop() as SceneTree).root.get_visible_rect().size
+	return view.x < view.y
 
 
 static func full_rect(c: Control) -> Control:

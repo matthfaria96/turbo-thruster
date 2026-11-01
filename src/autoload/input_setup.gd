@@ -24,6 +24,17 @@ const HELP := [
 ]
 
 
+## Same table for the on-screen buttons of the touch version (web/shell.html).
+const TOUCH_HELP := [
+	["Ir para os lados", "◀ ▶ (segure ou deslize)"],
+	["Atirar (segurar)", "FOGO"],
+	["Anel de energia", "ANEL (segure e solte)"],
+	["Especial: bomba", "BOMBA"],
+	["Nitro (barra cheia)", "NITRO"],
+	["Pausar", "Ⅱ no canto do painel"],
+]
+
+
 ## Menus also navigate with WASD (Godot's ui_* actions only have arrows).
 const UI_KEYS := {"ui_up": KEY_W, "ui_down": KEY_S, "ui_left": KEY_A, "ui_right": KEY_D}
 

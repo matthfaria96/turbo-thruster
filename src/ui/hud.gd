@@ -39,6 +39,8 @@ func build(_index: int, level: Dictionary, arcade := false) -> void:
 	root.add_child(_markers)
 	_panel = SidePanel.new()
 	UiStyle.full_rect(_panel)
+	# On a phone the buttons under the game show bombs, nitro and charge.
+	_panel.visible = not Mobile.enabled
 	root.add_child(_panel)
 	_gauges = CockpitGauges.new()
 	UiStyle.full_rect(_gauges)
@@ -112,7 +114,9 @@ func refresh(state: Dictionary, dt: float) -> void:
 	_panel.push(state, dt)
 	_markers.push(state.get("markers", []), dt)
 	if _route:
-		_route_holder.position = Vector2(view.x - _route_holder.size.x - 18.0, view.y * 0.5 - _route_holder.size.y * 0.5 - 10.0)
+		# Phone on its side: keep the map above the touch buttons in the lower corner.
+		var mid := 0.36 if Mobile.enabled and view.x > view.y else 0.5
+		_route_holder.position = Vector2(view.x - _route_holder.size.x - 18.0, view.y * mid - _route_holder.size.y * 0.5 - 10.0)
 		_route.update_state(float(state.distance), _boss_visible, dt)
 	_damage = maxf(0.0, _damage - dt * 1.6)
 	var low_hull := 0.25 if int(state.hull) == 1 else 0.0

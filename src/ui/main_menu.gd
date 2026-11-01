@@ -5,7 +5,8 @@ extends Screen
 func _init(p_main: Node) -> void:
 	super(p_main)
 	var col := centered_column(420)
-	col.add_child(ArcadeTitle.make("TURBO THRUSTER", 76))
+	var tall := UiStyle.is_tall()
+	col.add_child(ArcadeTitle.make("TURBO THRUSTER", 56 if tall else 76))
 	var tagline := UiStyle.label("CORRIDA ARCADE NEON", 20, Color(1.0, 0.45, 0.85), HORIZONTAL_ALIGNMENT_CENTER, true)
 	tagline.label_settings.outline_size = 6
 	tagline.label_settings.outline_color = Color(0.35, 0.0, 0.3)
@@ -31,14 +32,18 @@ func _init(p_main: Node) -> void:
 	version.offset_left = -90
 	version.offset_top = -44
 	add_child(version)
-	add_child(_leaderboard())
+	var board := _leaderboard()
+	if tall:
+		col.add_child(spacer(18))
+		col.add_child(board)
+	else:
+		_dock_right(board)
+		add_child(board)
 	focus_later(play)
 
 
-## Arcade top 5, shown beside the menu.
-func _leaderboard() -> PanelContainer:
-	var panel := PanelContainer.new()
-	# Anchored to the right edge, vertically centred beside the buttons.
+## Anchored to the right edge, vertically centred beside the buttons.
+func _dock_right(panel: Control) -> void:
 	panel.anchor_left = 1.0
 	panel.anchor_right = 1.0
 	panel.anchor_top = 0.5
@@ -48,6 +53,11 @@ func _leaderboard() -> PanelContainer:
 	panel.offset_top = -40.0
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+
+
+## Arcade top 5, beside the menu (below it on a phone held upright).
+func _leaderboard() -> PanelContainer:
+	var panel := PanelContainer.new()
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 6)
 	panel.add_child(vb)

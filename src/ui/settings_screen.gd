@@ -9,7 +9,7 @@ var _rows: Array[Dictionary] = []
 
 func _init(p_main: Node) -> void:
 	super(p_main)
-	var col := centered_column(720)
+	var col := centered_column(640 if UiStyle.is_tall() else 720)
 	col.add_theme_constant_override("separation", 10)
 	col.add_child(ArcadeTitle.make("CONFIGURAÇÕES", 40))
 	var panel := PanelContainer.new()
@@ -91,7 +91,7 @@ func _add_row(parent: Control, text: String, key: String, values: Array) -> void
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(name_label)
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(300, 38)
+	b.custom_minimum_size = Vector2(250 if UiStyle.is_tall() else 300, 38)
 	b.focus_mode = Control.FOCUS_ALL
 	UiStyle.wire(b)
 	row.add_child(b)

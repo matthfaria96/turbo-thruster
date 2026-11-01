@@ -46,7 +46,9 @@ func _ready() -> void:
 	# Browsers only allow fullscreen after a click or key press, so the web build starts in the page.
 	if OS.has_feature("web"):
 		settings.display_mode = 0
-	get_window().min_size = MIN_WINDOW
+	# In the browser the page sizes the canvas; a minimum would render past its edges.
+	if not OS.has_feature("web"):
+		get_window().min_size = MIN_WINDOW
 	apply_display()
 
 

@@ -14,6 +14,7 @@ config/icon="res://icon.png"
 
 Save="*res://src/autoload/save.gd"
 Sfx="*res://src/autoload/sfx.gd"
+Mobile="*res://src/autoload/mobile.gd"
 
 [display]
 

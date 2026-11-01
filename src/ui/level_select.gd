@@ -28,7 +28,9 @@ func _init(p_main: Node) -> void:
 		grid.add_child(card)
 		if first == null or (Save.is_unlocked(i) and i == Save.unlocked - 1):
 			first = card
-	row.add_child(_detail_panel())
+	# Upright phone: no room for the briefing; tapping a card starts the sector.
+	if not UiStyle.is_tall():
+		row.add_child(_detail_panel())
 	add_child(UiStyle.hint_bar("← → ↑ ↓  Escolher      Enter  Iniciar      Esc  Voltar"))
 	focus_later(first)
 
@@ -122,6 +124,8 @@ func _fixed_label(font_size: int, color: Color, lines: int, bold := false) -> La
 
 
 func _show_detail(index: int) -> void:
+	if _detail_name == null:
+		return
 	var level := Levels.get_level(index)
 	var unlocked := Save.is_unlocked(index)
 	_detail_name.text = "Setor %d · %s" % [index + 1, level.name] if unlocked else "Setor %d · Bloqueado" % (index + 1)

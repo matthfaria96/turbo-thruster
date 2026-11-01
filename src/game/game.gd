@@ -207,6 +207,11 @@ func _process(delta: float) -> void:
 	var dt := minf(delta, 1.0 / 30.0)
 	var playing := state in ACTIVE_STATES and not get_tree().paused
 	_update_mouse(playing)
+	Mobile.set_match(state in ACTIVE_STATES)
+	Mobile.push_hud(player.specials, player.nitro, player.charge, dt)
+	# A phone held upright: keep the side-to-side view and show more above/below.
+	var view := get_viewport().get_visible_rect().size
+	camera.keep_aspect = Camera3D.KEEP_WIDTH if view.x < view.y else Camera3D.KEEP_HEIGHT
 	hitstop_t = maxf(0.0, hitstop_t - dt)
 	var world_dt := dt * time_scale * (0.12 if hitstop_t > 0.0 else 1.0)
 	slow_carry = dt - world_dt
@@ -746,6 +751,9 @@ func on_player_died() -> void:
 ## land on the browser instead of the game, so the pointer is locked to the
 ## page instead; losing the lock (Esc, switching tabs) pauses like focus loss.
 func _update_mouse(playing: bool) -> void:
+	if Mobile.enabled:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		return
 	if not OS.has_feature("web"):
 		Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if playing else Input.MOUSE_MODE_VISIBLE
 		return
@@ -805,6 +813,7 @@ func close_overlay() -> void:
 
 
 func _exit_tree() -> void:
+	Mobile.set_match(false)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	Sfx.set_intensity(1.0)
 	player.external_drift = 0.0

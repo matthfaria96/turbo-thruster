@@ -8,6 +8,7 @@ var _backdrop: MenuBackdrop
 var _screen: Control
 var _game: Game
 var _args: Dictionary = {}
+var _tall := false
 
 
 func _ready() -> void:
@@ -15,6 +16,8 @@ func _ready() -> void:
 	_ui = CanvasLayer.new()
 	_ui.layer = 10
 	add_child(_ui)
+	_tall = UiStyle.is_tall()
+	get_viewport().size_changed.connect(_on_view_resized)
 	match String(_args.get("screen", "menu")):
 		"levels": show_level_select()
 		"settings": show_settings()
@@ -84,6 +87,19 @@ func _show_screen(screen: Control) -> void:
 		add_child(_backdrop)
 	_screen = screen
 	_ui.add_child(screen)
+
+
+## Turning a phone rebuilds the open menu so it uses the upright or wide layout.
+func _on_view_resized() -> void:
+	var tall := UiStyle.is_tall()
+	if tall == _tall:
+		return
+	_tall = tall
+	if _screen:
+		var screen_script: Script = _screen.get_script()
+		_clear_screen()
+		_screen = screen_script.new(self)
+		_ui.add_child(_screen)
 
 
 func _clear_screen() -> void:
