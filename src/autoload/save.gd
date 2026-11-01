@@ -44,8 +44,10 @@ func _ready() -> void:
 	InputSetup.register()
 	load_data()
 	# Browsers only allow fullscreen after a click or key press, so the web build starts in the page.
+	# The web build also opens every sector: there is no account to carry progress anywhere.
 	if OS.has_feature("web"):
 		settings.display_mode = 0
+		unlocked = Levels.count()
 	# In the browser the page sizes the canvas; a minimum would render past its edges.
 	if not OS.has_feature("web"):
 		get_window().min_size = MIN_WINDOW

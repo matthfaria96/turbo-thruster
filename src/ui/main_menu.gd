@@ -24,6 +24,8 @@ func _init(p_main: Node) -> void:
 		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		col.add_child(b)
 	var progress := "Setores liberados: %d / %d" % [Save.unlocked, Levels.count()]
+	if OS.has_feature("web"):
+		progress = "Setores concluídos: %d / %d" % [Save.best.size(), Levels.count()]
 	col.add_child(spacer(10))
 	col.add_child(UiStyle.label(progress, 18, UiStyle.DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	add_child(UiStyle.hint_bar("↑ ↓  Navegar      Enter  Confirmar      F11  Tela cheia"))

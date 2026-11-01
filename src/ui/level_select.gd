@@ -23,16 +23,27 @@ func _init(p_main: Node) -> void:
 	grid.add_theme_constant_override("v_separation", 14)
 	row.add_child(grid)
 	var first: Button = null
+	var focus_index := _focus_index()
 	for i in Levels.count():
 		var card := _card(i)
 		grid.add_child(card)
-		if first == null or (Save.is_unlocked(i) and i == Save.unlocked - 1):
+		if i == focus_index:
 			first = card
 	# Upright phone: no room for the briefing; tapping a card starts the sector.
 	if not UiStyle.is_tall():
 		row.add_child(_detail_panel())
 	add_child(UiStyle.hint_bar("← → ↑ ↓  Escolher      Enter  Iniciar      Esc  Voltar"))
 	focus_later(first)
+
+
+## The furthest sector unlocked; on the web, where all are open, the first one not cleared yet.
+func _focus_index() -> int:
+	if OS.has_feature("web"):
+		for i in Levels.count():
+			if Save.best_for(i).is_empty():
+				return i
+		return 0
+	return Save.unlocked - 1
 
 
 func _card(index: int) -> Button:

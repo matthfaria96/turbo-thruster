@@ -20,6 +20,17 @@ const BODY_FONT := preload("res://assets/fonts/Rajdhani-SemiBold.ttf")
 
 const ARCADE_FONT := preload("res://assets/fonts/Audiowide-Regular.ttf")
 const LCD_FONT := preload("res://assets/fonts/DSEG7Classic-Bold.ttf")
+## Arrows, stars and bars the text faces lack (DejaVu Sans Bold, cut down to
+## those glyphs). The desktop app borrowed them from system fonts; browsers
+## have none to lend, so they showed as empty boxes.
+const SYMBOL_FONT := preload("res://assets/fonts/DejaVuSans-Bold-Symbols.ttf")
+static var _symbols_attached := _attach_symbols()
+
+
+static func _attach_symbols() -> bool:
+	for f: Font in [BODY_FONT, ARCADE_FONT, TERM_FONT]:
+		f.fallbacks = [SYMBOL_FONT]
+	return true
 
 
 ## Digital arcade face for headings (Audiowide, full Portuguese accents).
